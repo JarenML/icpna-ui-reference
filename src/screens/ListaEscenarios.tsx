@@ -1,19 +1,21 @@
 import { useState } from 'react';
 import type { Screen } from '../App';
 import {
-  CORE, ESCENARIOS_DETALLE, FOOTNOTE, formatNum,
-  type EstadoEscenario, type FactibilidadEscenario,
+  CORE, ESCENARIOS_DETALLE, ESCENARIOS_PENDIENTES, FOOTNOTE, formatNum,
+  type EscenarioDetalle, type FactibilidadEscenario,
 } from '../data/constants';
+import EstadoBadge from '../components/EstadoBadge';
 
 interface Props {
   navigate: (s: Screen) => void;
   openEscenario: (id: string) => void;
 }
 
-const FILAS = ESCENARIOS_DETALLE.map((e) => ({
-  ...e,
-  intervenciones: e.contribuciones.length,
-}));
+// Scenarios with results carry them in `resultado`; Borrador / En proceso rows have none
+const FILAS = [
+  ...ESCENARIOS_DETALLE.map((e) => ({ ...e, intervenciones: e.contribuciones.length, resultado: e as EscenarioDetalle | null })),
+  ...ESCENARIOS_PENDIENTES.map((e) => ({ ...e, intervenciones: e.intervenciones.length, resultado: null })),
+].sort((a, b) => a.codigo.localeCompare(b.codigo));
 
 const FACT_STYLE: Record<FactibilidadEscenario, { color: string; bg: string; border: string }> = {
   'Factible': { color: '#15803d', bg: 'var(--success-bg)', border: 'var(--success-border)' },
@@ -21,11 +23,7 @@ const FACT_STYLE: Record<FactibilidadEscenario, { color: string; bg: string; bor
   'No factible': { color: '#b91c1c', bg: 'var(--danger-bg)', border: 'var(--danger-border)' },
 };
 
-const ESTADO_STYLE: Record<EstadoEscenario, { color: string; dot: string }> = {
-  Activo: { color: '#1e40af', dot: '#2563eb' },
-  Guardado: { color: '#334155', dot: '#94a3b8' },
-  Borrador: { color: '#64748b', dot: '#cbd5e1' },
-};
+const SinDato = () => <span style={{ color: '#cbd5e1' }}>—</span>;
 
 const Card = ({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) => (
   <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.05)', ...style }}>
@@ -42,12 +40,16 @@ export default function ListaEscenarios({ navigate, openEscenario }: Props) {
     const q = busqueda.trim().toLowerCase();
     if (q && !`${f.codigo} ${f.nombreCorto} ${f.descripcion} ${f.autor}`.toLowerCase().includes(q)) return false;
     if (filEstado !== 'Todos' && f.estado !== filEstado) return false;
-    if (filFact !== 'Todas' && f.factibilidad !== filFact) return false;
+    if (filFact !== 'Todas' && f.resultado?.factibilidad !== filFact) return false;
     return true;
   });
 
-  const factibles = FILAS.filter((f) => f.factibilidad === 'Factible');
+  const simulados = ESCENARIOS_DETALLE;
+  const factibles = simulados.filter((e) => e.factibilidad === 'Factible');
   const mejor = [...factibles].sort((a, b) => b.cumplimiento - a.cumplimiento)[0];
+  const aprobado = simulados.find((e) => e.estado === 'Aprobado');
+  const borradores = FILAS.filter((f) => f.estado === 'Borrador').length;
+  const enProceso = FILAS.filter((f) => f.estado === 'En proceso').length;
 
   const select = (label: string, value: string, onChange: (v: string) => void, opts: string[]) => (
     <div className="flex items-center gap-1.5">
@@ -94,10 +96,19 @@ export default function ListaEscenarios({ navigate, openEscenario }: Props) {
       {/* Summary strip */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          { label: 'Escenarios registrados', value: String(FILAS.length), sub: `${FILAS.filter((f) => f.estado === 'Borrador').length} en borrador`, color: '#0f172a' },
-          { label: 'Escenario activo', value: 'ESC-03', sub: 'Crecimiento Moderado · v4', color: '#1e40af' },
-          { label: 'Factibles', value: `${factibles.length} / ${FILAS.length}`, sub: 'Sin restricciones de capacidad', color: '#16a34a' },
-          { label: 'Mejor cumplimiento factible', value: `${mejor.cumplimiento}%`, sub: `${mejor.codigo} — ${mejor.descripcion}`, color: '#0369a1' },
+          {
+            label: 'Escenarios registrados', value: String(FILAS.length), color: '#0f172a',
+            sub: `${simulados.length} con resultados · ${borradores} en borrador · ${enProceso} en proceso`,
+          },
+          {
+            label: 'Escenario aprobado', value: aprobado ? aprobado.codigo : '—', color: '#15803d',
+            sub: aprobado ? `Meta oficial · ${aprobado.descripcion}` : 'Sin Meta oficial definida',
+          },
+          { label: 'Factibles', value: `${factibles.length} / ${simulados.length}`, sub: 'De los escenarios con resultados', color: '#16a34a' },
+          {
+            label: 'Mejor cumplimiento factible', value: mejor ? `${mejor.cumplimiento}%` : '—', color: '#0369a1',
+            sub: mejor ? `${mejor.codigo} — ${mejor.descripcion}` : 'Sin escenarios factibles',
+          },
         ].map((k) => (
           <Card key={k.label} style={{ padding: '14px 16px' }}>
             <div className="text-xs font-medium mb-1 uppercase tracking-wide" style={{ color: '#64748b', fontSize: 10.5 }}>{k.label}</div>
@@ -121,7 +132,7 @@ export default function ListaEscenarios({ navigate, openEscenario }: Props) {
             />
           </div>
           <div className="flex items-center gap-4">
-            {select('Estado', filEstado, setFilEstado, ['Todos', 'Activo', 'Guardado', 'Borrador'])}
+            {select('Estado', filEstado, setFilEstado, ['Todos', 'Borrador', 'En proceso', 'Simulado', 'Aprobado'])}
             {select('Factibilidad', filFact, setFilFact, ['Todas', 'Factible', 'Factible con restricciones', 'No factible'])}
           </div>
         </div>
@@ -143,59 +154,93 @@ export default function ListaEscenarios({ navigate, openEscenario }: Props) {
             </thead>
             <tbody>
               {filas.map((f) => {
-                const fact = FACT_STYLE[f.factibilidad];
-                const est = ESTADO_STYLE[f.estado];
-                const activo = f.estado === 'Activo';
+                const r = f.resultado;
+                const aprobadoFila = f.estado === 'Aprobado';
+                const rowBg = aprobadoFila ? '#f6fdf8' : '#fff';
                 return (
                   <tr
                     key={f.id}
                     className="transition-colors"
-                    style={{ borderBottom: '1px solid var(--border)', background: activo ? '#f8fbff' : '#fff' }}
+                    style={{ borderBottom: '1px solid var(--border)', background: rowBg }}
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f1f5f9'; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = activo ? '#f8fbff' : '#fff'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = rowBg; }}
                   >
-                    <td className="px-4 py-3" style={{ borderLeft: `3px solid ${activo ? '#2563eb' : 'transparent'}` }}>
+                    <td className="px-4 py-3" style={{ borderLeft: `3px solid ${aprobadoFila ? '#16a34a' : 'transparent'}` }}>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-semibold" style={{ color: '#1e40af' }}>{f.codigo}</span>
+                        <span className="font-mono font-semibold whitespace-nowrap" style={{ color: '#1e40af' }}>{f.codigo}</span>
                         <span className="font-medium" style={{ color: '#0f172a' }}>{f.descripcion}</span>
+                        {aprobadoFila && (
+                          <span className="px-1.5 rounded font-semibold whitespace-nowrap" style={{ fontSize: 10, background: '#dcfce7', color: '#15803d' }}>
+                            Meta oficial
+                          </span>
+                        )}
                       </div>
                       <div className="mt-0.5" style={{ color: '#94a3b8', fontSize: 11 }}>{f.autor}</div>
                     </td>
                     <td className="px-4 py-3 font-mono" style={{ color: '#334155' }}>v{f.version}</td>
-                    <td className="px-4 py-3 font-mono text-right font-medium" style={{ color: '#0f172a' }}>{formatNum(f.matriculas)}</td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="font-mono font-medium" style={{ color: f.cumplimiento >= 98 ? '#16a34a' : '#334155' }}>{f.cumplimiento}%</div>
-                      <div className="ml-auto mt-1 rounded-full overflow-hidden" style={{ width: 72, height: 4, background: '#e2e8f0' }}>
-                        <div style={{ width: `${Math.min(f.cumplimiento, 100)}%`, height: '100%', background: f.cumplimiento >= 98 ? '#16a34a' : '#2563eb' }} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-right" style={{ color: f.brecha >= 0 ? '#16a34a' : '#d97706' }}>
-                      {(f.brecha > 0 ? '+' : '') + formatNum(f.brecha).replace('-', '−')}
-                    </td>
+
+                    {r ? (
+                      <>
+                        <td className="px-4 py-3 font-mono text-right font-medium" style={{ color: '#0f172a' }}>{formatNum(r.matriculas)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="font-mono font-medium" style={{ color: r.cumplimiento >= 98 ? '#16a34a' : '#334155' }}>{r.cumplimiento}%</div>
+                          <div className="ml-auto mt-1 rounded-full overflow-hidden" style={{ width: 72, height: 4, background: '#e2e8f0' }}>
+                            <div style={{ width: `${Math.min(r.cumplimiento, 100)}%`, height: '100%', background: r.cumplimiento >= 98 ? '#16a34a' : '#2563eb' }} />
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-right" style={{ color: r.brecha >= 0 ? '#16a34a' : '#d97706' }}>
+                          {(r.brecha > 0 ? '+' : '') + formatNum(r.brecha).replace('-', '−')}
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-4 py-3 font-mono text-right"><SinDato /></td>
+                        <td className="px-4 py-3 font-mono text-right"><SinDato /></td>
+                        <td className="px-4 py-3 font-mono text-right"><SinDato /></td>
+                      </>
+                    )}
+
                     <td className="px-4 py-3 font-mono text-right" style={{ color: '#334155' }}>{f.intervenciones}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className="inline-block px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
-                        style={{ background: fact.bg, color: fact.color, border: `1px solid ${fact.border}`, fontSize: 11 }}
-                      >
-                        {f.factibilidad}
-                      </span>
+                      {r ? (
+                        <span
+                          className="inline-block px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                          style={{
+                            background: FACT_STYLE[r.factibilidad].bg,
+                            color: FACT_STYLE[r.factibilidad].color,
+                            border: `1px solid ${FACT_STYLE[r.factibilidad].border}`,
+                            fontSize: 11,
+                          }}
+                        >
+                          {r.factibilidad}
+                        </span>
+                      ) : (
+                        <SinDato />
+                      )}
                     </td>
-                    <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1.5 font-medium" style={{ color: est.color }}>
-                        <span className="rounded-full" style={{ width: 6, height: 6, background: est.dot }} />
-                        {f.estado}
-                      </span>
-                    </td>
+                    <td className="px-4 py-3"><EstadoBadge estado={f.estado} compact /></td>
                     <td className="px-4 py-3 font-mono whitespace-nowrap" style={{ color: '#64748b' }}>{f.modificado}</td>
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => openEscenario(f.id)}
-                        className="text-xs px-2.5 py-1 rounded font-medium transition-colors hover:bg-blue-100"
-                        style={{ background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}
-                      >
-                        Ver resultado →
-                      </button>
+                      {r ? (
+                        <button
+                          onClick={() => openEscenario(f.id)}
+                          className="text-xs px-2.5 py-1 rounded font-medium transition-colors hover:bg-blue-100"
+                          style={{ background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}
+                        >
+                          Ver resultado →
+                        </button>
+                      ) : (
+                        <button
+                          disabled
+                          title={f.estado === 'En proceso'
+                            ? 'La simulación se está procesando en segundo plano'
+                            : 'Sin resultados: el escenario aún no se ha simulado'}
+                          className="text-xs px-2.5 py-1 rounded font-medium cursor-not-allowed"
+                          style={{ background: '#f8fafc', color: '#94a3b8', border: '1px solid var(--border)' }}
+                        >
+                          Ver resultado →
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

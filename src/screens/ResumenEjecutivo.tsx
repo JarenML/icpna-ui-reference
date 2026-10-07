@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import type { Screen } from '../App';
 import {
-  CORE, MENSUAL, TOP_COMBINACIONES, FOOTNOTE, ESCENARIOS_NUMERADOS, formatNum, formatPct,
+  CORE, MENSUAL, TOP_COMBINACIONES, FOOTNOTE, ESCENARIOS_DETALLE, formatNum, formatPct,
 } from '../data/constants';
 
 type Tono = 'ok' | 'warn' | 'error';
@@ -17,7 +17,26 @@ const TONOS: Record<Tono, { color: string; bg: string }> = {
   error: { color: '#dc2626', bg: '#fef2f2' },
 };
 
-const ESCENARIOS = ESCENARIOS_NUMERADOS;
+const ESCENARIOS = ESCENARIOS_DETALLE.map((e) => {
+  const restricciones = e.capacidad.filter((c) => c.requerida > c.disponible).length;
+  const factibilidad = {
+    'Factible': { valor: 'Factible', sub: `Ocupabilidad ${e.ocupabilidad}%`, badge: 'Sin restricciones', tono: 'ok' as Tono },
+    'Factible con restricciones': { valor: 'Con obs.', sub: `${restricciones} sedes con restricciones`, badge: 'Revisar capacidad', tono: 'warn' as Tono },
+    'No factible': { valor: 'No factible', sub: `Ocupabilidad ${e.ocupabilidad}%`, badge: 'Excede capacidad', tono: 'error' as Tono },
+  }[e.factibilidad];
+  return {
+    id: e.id,
+    label: `${e.codigo.replace('ESC-', 'Esc. ')} — ${e.descripcion}`,
+    nombre: e.nombreCorto,
+    matriculas: e.matriculas,
+    cumplimiento: e.cumplimiento,
+    brecha: e.brecha,
+    factibilidad: factibilidad.valor,
+    factibilidadSub: factibilidad.sub,
+    factibilidadBadge: factibilidad.badge,
+    factibilidadTono: factibilidad.tono,
+  };
+});
 const ESCENARIO_ACTIVO = ESCENARIOS.find((e) => e.id === 'esc03')!;
 
 const Card = ({ children, className = '', style = {} }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) => (
@@ -214,116 +233,219 @@ export default function ResumenEjecutivo({ navigate }: Props) {
 
       {/* Main chart + Summary panel */}
       <div className="grid gap-4" style={{ gridTemplateColumns: '1fr 320px' }}>
-        <Card>
-          <CardHeader
-            title="Evolución de Matrículas — Baseline vs Escenario vs Meta vs Capacidad"
-            subtitle="Valores mensuales 2027 · Banda de confianza al 95%"
-          />
-          <div className="p-4 pb-2">
-            <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={mensual}margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#64748b' }} />
-                <YAxis
-                  tick={{ fontSize: 11, fill: '#64748b' }}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
-                  domain={[9000, 21000]}
-                />
-                <Tooltip content={customTooltip} />
-                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
+        {/* Left column: chart + breakdown cards */}
+        <div className="flex flex-col gap-4 min-w-0">
+          <Card>
+            <CardHeader
+              title="Evolución de Matrículas — Baseline vs Escenario vs Meta vs Capacidad"
+              subtitle="Valores mensuales 2027 · Banda de confianza al 95%"
+            />
+            <div className="p-4 pb-2">
+              <ResponsiveContainer width="100%" height={280}>
+                <ComposedChart data={mensual}margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#64748b' }} />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: '#64748b' }}
+                    tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                    domain={[9000, 21000]}
+                  />
+                  <Tooltip content={customTooltip} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
 
-                {/* IC band */}
-                <Area
-                  dataKey="icSup"
-                  name="Límite Superior (IC 95%)"
-                  fill="#dbeafe"
-                  stroke="#93c5fd"
-                  strokeWidth={1}
-                  strokeDasharray="4 2"
-                  fillOpacity={0.35}
-                />
-                <Area
-                  dataKey="icInf"
-                  name="Límite Inferior (IC 95%)"
-                  fill="#fff"
-                  stroke="#93c5fd"
-                  strokeWidth={1}
-                  strokeDasharray="4 2"
-                  fillOpacity={0}
-                />
+                  {/* IC band */}
+                  <Area
+                    dataKey="icSup"
+                    name="Límite Superior (IC 95%)"
+                    fill="#dbeafe"
+                    stroke="#93c5fd"
+                    strokeWidth={1}
+                    strokeDasharray="4 2"
+                    fillOpacity={0.35}
+                  />
+                  <Area
+                    dataKey="icInf"
+                    name="Límite Inferior (IC 95%)"
+                    fill="#fff"
+                    stroke="#93c5fd"
+                    strokeWidth={1}
+                    strokeDasharray="4 2"
+                    fillOpacity={0}
+                  />
 
-                {/* Punto de Equilibrio */}
-                <ReferenceLine
-                  y={11000}
-                  stroke="#94a3b8"
-                  strokeDasharray="2 4"
-                  label={{ value: 'Punto Equilibrio', position: 'right', fontSize: 10, fill: '#94a3b8' }}
-                />
+                  {/* Punto de Equilibrio */}
+                  <ReferenceLine
+                    y={11000}
+                    stroke="#94a3b8"
+                    strokeDasharray="2 4"
+                    label={{ value: 'Punto Equilibrio', position: 'right', fontSize: 10, fill: '#94a3b8' }}
+                  />
 
-                <Line
-                  dataKey="baseline"
-                  name="Baseline"
-                  stroke="#64748b"
-                  strokeWidth={2}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-                <Line
-                  dataKey="capacidad"
-                  name="Capacidad Disponible"
-                  stroke="#f97316"
-                  strokeWidth={1.5}
-                  strokeDasharray="6 3"
-                  dot={false}
-                />
-                <Line
-                  dataKey="escenario"
-                  name={esc.nombre}
-                  stroke="#2563eb"
-                  strokeWidth={2.5}
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                />
-                <Line
-                  dataKey="meta"
-                  name="Meta ICPNA"
-                  stroke="#16a34a"
-                  strokeWidth={2}
-                  strokeDasharray="8 4"
-                  dot={false}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
+                  <Line
+                    dataKey="baseline"
+                    name="Baseline"
+                    stroke="#64748b"
+                    strokeWidth={2}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                  <Line
+                    dataKey="capacidad"
+                    name="Capacidad Disponible"
+                    stroke="#f97316"
+                    strokeWidth={1.5}
+                    strokeDasharray="6 3"
+                    dot={false}
+                  />
+                  <Line
+                    dataKey="escenario"
+                    name={esc.nombre}
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{ r: 4 }}
+                  />
+                  <Line
+                    dataKey="meta"
+                    name="Meta ICPNA"
+                    stroke="#16a34a"
+                    strokeWidth={2}
+                    strokeDasharray="8 4"
+                    dot={false}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
 
-            {/* Alert flags */}
-            <div className="flex gap-2 mt-2 flex-wrap">
-              <div
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded"
-                style={{ background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e' }}
-              >
-                <span>⚠</span>
-                <span>Mar: Meta excede IC Superior — plausibilidad estadística</span>
+              {/* Alert flags */}
+              <div className="flex gap-2 mt-2 flex-wrap">
+                <div
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded"
+                  style={{ background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e' }}
+                >
+                  <span>⚠</span>
+                  <span>Mar: Meta excede IC Superior — plausibilidad estadística</span>
+                </div>
+                <div
+                  className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded"
+                  style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }}
+                >
+                  <span>🔴</span>
+                  <span>Mar: Meta excede Capacidad Disponible — restricción real</span>
+                </div>
+                <button
+                  onClick={() => navigate('alertas')}
+                  className="text-xs px-2.5 py-1 rounded underline"
+                  style={{ color: '#2563eb' }}
+                >
+                  Ver Reporte de Alertas →
+                </button>
               </div>
-              <div
-                className="flex items-center gap-1.5 text-xs px-2.5 py-1 rounded"
-                style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }}
-              >
-                <span>🔴</span>
-                <span>Mar: Meta excede Capacidad Disponible — restricción real</span>
-              </div>
-              <button
-                onClick={() => navigate('alertas')}
-                className="text-xs px-2.5 py-1 rounded underline"
-                style={{ color: '#2563eb' }}
-              >
-                Ver Reporte de Alertas →
-              </button>
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        {/* Right panels */}
-        <div className="flex flex-col gap-3">
+          {/* Contributions + Capacity + Top combinations */}
+          <div className="grid grid-cols-3 gap-4">
+            {/* Contribution chart */}
+            <Card className="col-span-1">
+              <CardHeader title="Aporte estimado por iniciativa" subtitle="Contribución al Escenario 03 vs Baseline" />
+              <div className="p-4">
+                <ResponsiveContainer width="100%" height={160}>
+                  <BarChart data={contributions} layout="vertical" margin={{ left: 4, right: 40, top: 4, bottom: 4 }}>
+                    <XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => `+${(v / 1000).toFixed(1)}k`} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#334155' }} width={130} />
+                    <Tooltip formatter={(v: any) => [`+${v.toLocaleString('es-PE')} mat.`, 'Contribución']} />
+                    <Bar dataKey="value" radius={[0, 3, 3, 0]} fill="#2563eb">
+                      {contributions.map((_, i) => (
+                        <Cell key={i} fill={['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa'][i]} />
+                      ))}
+                      <LabelList
+                        dataKey="pct"
+                        position="right"
+                        formatter={(v: any) => `+${v}%`}
+                        style={{ fontSize: 10, fill: '#16a34a', fontWeight: 600 }}
+                      />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            {/* Dónde más crece */}
+            <Card>
+              <CardHeader
+                title="Dónde más crece (Top 5 combinaciones)"
+                action={
+                  <button
+                    onClick={() => navigate('granular')}
+                    className="text-xs underline"
+                    style={{ color: '#2563eb' }}
+                  >
+                    Ver detalle granular →
+                  </button>
+                }
+              />
+              <div className="p-3">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                      {['Sede — Modalidad — Curso — Horario', 'Var. Mat.', 'Var. %'].map((h) => (
+                        <th key={h} className="pb-1.5 text-left font-semibold" style={{ color: '#64748b', fontSize: 10 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {TOP_COMBINACIONES.map((row, i) => (
+                      <tr key={i} style={{ borderBottom: '1px solid #f8fafc' }}>
+                        <td className="py-1.5 pr-2" style={{ color: '#334155', fontSize: 11 }}>{row.combo}</td>
+                        <td className="py-1.5 font-mono text-right font-medium" style={{ color: '#16a34a' }}>
+                          +{row.varAbs.toLocaleString('es-PE')}
+                        </td>
+                        <td className="py-1.5 font-mono text-right font-semibold" style={{ color: '#16a34a' }}>
+                          {formatPct(row.varPct)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+
+            {/* Estado de capacidad */}
+            <Card>
+              <CardHeader title="Estado de Capacidad" />
+              <div className="p-4 space-y-3">
+                {[
+                  { label: 'Ocupabilidad promedio', value: '89%', color: '#16a34a' },
+                  { label: 'Sedes sin restricción', value: '14', color: '#0f172a' },
+                  { label: 'Sedes con observaciones', value: '2', color: '#d97706' },
+                  { label: 'Brecha máxima detectada', value: '14 clases', color: '#dc2626' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <span className="text-xs" style={{ color: '#64748b' }}>{item.label}</span>
+                    <span className="text-sm font-bold font-mono" style={{ color: item.color }}>{item.value}</span>
+                  </div>
+                ))}
+                <div
+                  className="flex gap-2 p-2.5 rounded text-xs mt-2"
+                  style={{ background: '#fffbeb', border: '1px solid #fde68a' }}
+                >
+                  <span style={{ color: '#d97706' }}>⚠</span>
+                  <span style={{ color: '#92400e' }}>Existen restricciones de capacidad en determinadas combinaciones de sede y periodo.</span>
+                </div>
+                <button
+                  onClick={() => navigate('escenarios')}
+                  className="w-full text-sm font-semibold py-2 rounded mt-1 transition-colors"
+                  style={{ background: '#1e40af', color: '#fff', border: 'none' }}
+                >
+                  Ver detalle del escenario →
+                </button>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Right panels (soft vertical divider from the main content) */}
+        <div className="flex flex-col gap-3 pl-4" style={{ borderLeft: '1px solid #e2e8f0' }}>
           {/* Resumen consolidado */}
           <Card>
             <CardHeader title="Resumen Consolidado" />
@@ -375,9 +497,9 @@ export default function ResumenEjecutivo({ navigate }: Props) {
           </Card>
 
           {/* Referencias */}
-          <Card>
+          <Card className="flex-1 flex flex-col">
             <CardHeader title="Referencias Importantes" />
-            <div className="p-3 space-y-1.5">
+            <div className="flex-1 flex flex-col justify-evenly gap-1.5 p-3">
               {[
                 { term: 'IC 95%', def: 'Banda estadística basada en el comportamiento histórico.' },
                 { term: 'Proyección Base', def: 'Lo que estadísticamente se espera que ocurra.' },
@@ -393,106 +515,6 @@ export default function ResumenEjecutivo({ navigate }: Props) {
             </div>
           </Card>
         </div>
-      </div>
-
-      {/* Contributions + Capacity + Top combinations */}
-      <div className="grid grid-cols-3 gap-4">
-        {/* Contribution chart */}
-        <Card className="col-span-1">
-          <CardHeader title="Aporte estimado por iniciativa" subtitle="Contribución al Escenario 03 vs Baseline" />
-          <div className="p-4">
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={contributions} layout="vertical" margin={{ left: 4, right: 40, top: 4, bottom: 4 }}>
-                <XAxis type="number" tick={{ fontSize: 10, fill: '#64748b' }} tickFormatter={(v) => `+${(v / 1000).toFixed(1)}k`} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 10, fill: '#334155' }} width={130} />
-                <Tooltip formatter={(v: any) => [`+${v.toLocaleString('es-PE')} mat.`, 'Contribución']} />
-                <Bar dataKey="value" radius={[0, 3, 3, 0]} fill="#2563eb">
-                  {contributions.map((_, i) => (
-                    <Cell key={i} fill={['#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa'][i]} />
-                  ))}
-                  <LabelList
-                    dataKey="pct"
-                    position="right"
-                    formatter={(v: any) => `+${v}%`}
-                    style={{ fontSize: 10, fill: '#16a34a', fontWeight: 600 }}
-                  />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-
-        {/* Dónde más crece */}
-        <Card>
-          <CardHeader
-            title="Dónde más crece (Top 5 combinaciones)"
-            action={
-              <button
-                onClick={() => navigate('granular')}
-                className="text-xs underline"
-                style={{ color: '#2563eb' }}
-              >
-                Ver detalle granular →
-              </button>
-            }
-          />
-          <div className="p-3">
-            <table className="w-full text-xs">
-              <thead>
-                <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                  {['Sede — Modalidad — Curso — Horario', 'Var. Mat.', 'Var. %'].map((h) => (
-                    <th key={h} className="pb-1.5 text-left font-semibold" style={{ color: '#64748b', fontSize: 10 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {TOP_COMBINACIONES.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f8fafc' }}>
-                    <td className="py-1.5 pr-2" style={{ color: '#334155', fontSize: 11 }}>{row.combo}</td>
-                    <td className="py-1.5 font-mono text-right font-medium" style={{ color: '#16a34a' }}>
-                      +{row.varAbs.toLocaleString('es-PE')}
-                    </td>
-                    <td className="py-1.5 font-mono text-right font-semibold" style={{ color: '#16a34a' }}>
-                      {formatPct(row.varPct)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-
-        {/* Estado de capacidad */}
-        <Card>
-          <CardHeader title="Estado de Capacidad" />
-          <div className="p-4 space-y-3">
-            {[
-              { label: 'Ocupabilidad promedio', value: '89%', color: '#16a34a' },
-              { label: 'Sedes sin restricción', value: '14', color: '#0f172a' },
-              { label: 'Sedes con observaciones', value: '2', color: '#d97706' },
-              { label: 'Brecha máxima detectada', value: '14 clases', color: '#dc2626' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className="text-xs" style={{ color: '#64748b' }}>{item.label}</span>
-                <span className="text-sm font-bold font-mono" style={{ color: item.color }}>{item.value}</span>
-              </div>
-            ))}
-            <div
-              className="flex gap-2 p-2.5 rounded text-xs mt-2"
-              style={{ background: '#fffbeb', border: '1px solid #fde68a' }}
-            >
-              <span style={{ color: '#d97706' }}>⚠</span>
-              <span style={{ color: '#92400e' }}>Existen restricciones de capacidad en determinadas combinaciones de sede y periodo.</span>
-            </div>
-            <button
-              onClick={() => navigate('escenarios')}
-              className="w-full text-sm font-semibold py-2 rounded mt-1 transition-colors"
-              style={{ background: '#1e40af', color: '#fff', border: 'none' }}
-            >
-              Ver detalle del escenario →
-            </button>
-          </div>
-        </Card>
       </div>
 
       <Footnote />

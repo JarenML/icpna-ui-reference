@@ -120,10 +120,6 @@ export default function Sidebar({ current, navigate }: Props) {
           <div className="font-medium mb-0.5" style={{ color: '#64748b' }}>Baseline activo</div>
           <div className="font-mono" style={{ color: '#94a3b8', fontSize: 11 }}>2027.01 — Solo lectura</div>
         </div>
-        <div className="text-xs mt-2" style={{ color: '#475569' }}>
-          <div className="font-medium mb-0.5" style={{ color: '#64748b' }}>Escenario activo</div>
-          <div style={{ color: '#94a3b8', fontSize: 11 }}>Esc. 03 — Crec. Moderado</div>
-        </div>
       </div>
     </aside>
   );

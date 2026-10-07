@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import type { Screen } from '../App';
-import { FOOTNOTE } from '../data/constants';
+import { FOOTNOTE, ESCENARIOS_DETALLE, ESCENARIOS_PENDIENTES } from '../data/constants';
+
+// Every scenario an intervention can belong to (with or without results)
+const ESCENARIOS = [...ESCENARIOS_DETALLE, ...ESCENARIOS_PENDIENTES]
+  .sort((a, b) => a.codigo.localeCompare(b.codigo));
+const escenarioDe = (id: string) => ESCENARIOS.find((e) => e.id === id);
 
 interface Intervention {
   id: number;
@@ -13,6 +18,7 @@ interface Intervention {
   justificacion: string;
   responsable: string;
   tipo?: string;
+  escenario: string;
 }
 
 const clasificacionBadge = (c: Intervention['clasificacion']) => {
@@ -43,6 +49,7 @@ const initialInterventions: Intervention[] = [
     persistencia: 'Acumulativo',
     justificacion: 'Objetivo de mejora de continuidad académica aprobado para planificación.',
     responsable: 'Gerencia Comercial',
+    escenario: 'esc03',
     tipo: 'Retención',
   },
   {
@@ -55,6 +62,7 @@ const initialInterventions: Intervention[] = [
     persistencia: 'Con decaimiento',
     justificacion: 'Campaña estacional considerada dentro del plan comercial.',
     responsable: 'Gerencia Comercial',
+    escenario: 'esc03',
     tipo: 'Campaña comercial',
   },
   {
@@ -67,6 +75,7 @@ const initialInterventions: Intervention[] = [
     persistencia: 'Permanente',
     justificacion: 'Análisis de horarios comparables históricos en otras sedes.',
     responsable: 'Gerencia Académica',
+    escenario: 'esc03',
     tipo: 'Nuevo horario',
   },
   {
@@ -79,6 +88,7 @@ const initialInterventions: Intervention[] = [
     persistencia: 'Con decaimiento',
     justificacion: 'Supuesto de incremento moderado en participación de cursos premium.',
     responsable: 'Gerencia Comercial',
+    escenario: 'esc03',
     tipo: 'Precio / descuento',
   },
 ];
@@ -99,7 +109,7 @@ export default function ConstruccionEscenario({ navigate, onSimulate }: Props) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [form, setForm] = useState({
     nombre: '', periodo: '', granularidad: '', tipo: TIPOS_INTERVENCION[0],
-    impacto: '', persistencia: 'Acumulativo', justificacion: '', responsable: '',
+    impacto: '', persistencia: 'Acumulativo', justificacion: '', responsable: '', escenario: 'esc03',
     clasificacion: 'Supuesto gerencial' as Intervention['clasificacion'],
   });
 
@@ -116,9 +126,10 @@ export default function ConstruccionEscenario({ navigate, onSimulate }: Props) {
       justificacion: form.justificacion,
       responsable: form.responsable,
       tipo: form.tipo,
+      escenario: form.escenario,
     }]);
     setPanelOpen(false);
-    setForm({ nombre: '', periodo: '', granularidad: '', tipo: TIPOS_INTERVENCION[0], impacto: '', persistencia: 'Acumulativo', justificacion: '', responsable: '', clasificacion: 'Supuesto gerencial' });
+    setForm({ nombre: '', periodo: '', granularidad: '', tipo: TIPOS_INTERVENCION[0], impacto: '', persistencia: 'Acumulativo', justificacion: '', responsable: '', escenario: 'esc03', clasificacion: 'Supuesto gerencial' });
   };
 
   const removeIntervention = (id: number) => {
@@ -176,9 +187,6 @@ export default function ConstruccionEscenario({ navigate, onSimulate }: Props) {
         <span className="text-xs" style={{ color: '#94a3b8' }}>
           · Generado externamente · No editable · 184,250 matrículas proyectadas
         </span>
-        <span className="ml-auto text-xs" style={{ color: '#64748b' }}>
-          Escenario activo: <strong style={{ color: '#0f172a' }}>Escenario 03 — Crecimiento Moderado 2027</strong>
-        </span>
       </div>
 
       {/* Intervention cards */}
@@ -218,6 +226,16 @@ export default function ConstruccionEscenario({ navigate, onSimulate }: Props) {
                     {inv.id.toString().padStart(2, '0')}
                   </div>
                   <span className="font-semibold text-sm" style={{ color: '#0f172a' }}>{inv.nombre}</span>
+                  {escenarioDe(inv.escenario) && (
+                    <span
+                      title={`Pertenece a ${escenarioDe(inv.escenario)!.nombreCorto} — ${escenarioDe(inv.escenario)!.descripcion}`}
+                      className="inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium whitespace-nowrap"
+                      style={{ background: '#fff', color: '#1e40af', border: '1px solid #bfdbfe' }}
+                    >
+                      <span className="font-mono font-semibold">{escenarioDe(inv.escenario)!.codigo}</span>
+                      <span style={{ color: '#64748b' }}>{escenarioDe(inv.escenario)!.descripcion}</span>
+                    </span>
+                  )}
                   {clasificacionBadge(inv.clasificacion)}
                   {inv.tipo && (
                     <span className="text-xs px-2 py-0.5 rounded" style={{ background: '#f1f5f9', color: '#64748b' }}>
@@ -325,6 +343,20 @@ export default function ConstruccionEscenario({ navigate, onSimulate }: Props) {
             </div>
 
             <div className="p-5 space-y-4 flex-1">
+              <div>
+                <label className={labelCls} style={{ color: '#334155' }}>Escenario</label>
+                <select
+                  className={inputCls}
+                  style={inputStyle}
+                  value={form.escenario}
+                  onChange={(e) => setForm((prev) => ({ ...prev, escenario: e.target.value }))}
+                >
+                  {ESCENARIOS.map((e) => (
+                    <option key={e.id} value={e.id}>{e.codigo} — {e.descripcion}</option>
+                  ))}
+                </select>
+              </div>
+
               {[
                 { key: 'nombre', label: 'Nombre de la intervención', type: 'text', placeholder: 'Ej. Campaña de Captación Semestre 2' },
                 { key: 'periodo', label: 'Periodo de aplicación', type: 'text', placeholder: 'Ej. 2027-04 a 2027-06' },

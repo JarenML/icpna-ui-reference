@@ -142,7 +142,7 @@ export default function ReporteAlertas({ navigate }: Props) {
         <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#64748b', fontSize: 10 }}>Filtros:</span>
         {[
           { label: 'Nivel', value: filNivel, onChange: setFilNivel, opts: ['Todos', 'Crítica', 'Advertencia', 'Error', 'Informativa'] },
-          { label: 'Escenario', value: filEscenario, onChange: setFilEscenario, opts: ['Todos', 'Escenario 03', 'Escenario A', 'Escenario B'] },
+          { label: 'Escenario', value: filEscenario, onChange: setFilEscenario, opts: ['Todos', 'Escenario 01', 'Escenario 02', 'Escenario 03', 'Escenario 04'] },
           { label: 'Sede', value: filSede, onChange: setFilSede, opts: ['Todas', 'Miraflores', 'San Miguel', 'Surco', 'San Isidro'] },
           { label: 'Periodo', value: 'Todos', onChange: () => {}, opts: ['Todos', '2027-01', '2027-02', '2027-03', '2027-04'] },
         ].map((f) => (

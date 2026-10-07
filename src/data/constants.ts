@@ -39,28 +39,12 @@ export const WATERFALL = [
   { name: 'Escenario', value: 196_840, type: 'result' },
 ];
 
-// Numbered scenarios selectable in Screen 1 (Esc. 03 is the active one)
-export const ESCENARIOS_NUMERADOS = [
-  {
-    id: 'esc01', label: 'Esc. 01 — Crec. Conservador', nombre: 'Escenario 01',
-    matriculas: 189_600, cumplimiento: 94.8, brecha: -10_400,
-    factibilidad: 'Factible', factibilidadSub: 'Ocupabilidad 78%', factibilidadBadge: 'Sin restricciones', factibilidadTono: 'ok',
-  },
-  {
-    id: 'esc02', label: 'Esc. 02 — Retención Reforzada', nombre: 'Escenario 02',
-    matriculas: 192_300, cumplimiento: 96.2, brecha: -7_700,
-    factibilidad: 'Factible', factibilidadSub: 'Ocupabilidad 84%', factibilidadBadge: 'Sin restricciones', factibilidadTono: 'ok',
-  },
-  {
-    id: 'esc03', label: 'Esc. 03 — Crec. Moderado', nombre: 'Escenario 03',
-    matriculas: CORE.escenario, cumplimiento: CORE.cumplimiento, brecha: CORE.brecha,
-    factibilidad: 'Con obs.', factibilidadSub: '2 sedes con restricciones', factibilidadBadge: 'Revisar capacidad', factibilidadTono: 'warn',
-  },
-] as const;
-
 // Scenario detail (Screen 3) and scenario list. Contributions sum to matriculas − baseline.
 export type FactibilidadEscenario = 'Factible' | 'Factible con restricciones' | 'No factible';
-export type EstadoEscenario = 'Activo' | 'Guardado' | 'Borrador';
+// Borrador: intervenciones registradas, nunca simulado · En proceso: simulación en segundo plano
+// Simulado: resultados vigentes · Aprobado: elegido por la Gerencia como Meta Factible (Meta oficial)
+export type EstadoEscenario = 'Borrador' | 'En proceso' | 'Simulado' | 'Aprobado';
+export type EstadoConResultados = Extract<EstadoEscenario, 'Simulado' | 'Aprobado'>;
 
 export interface CapacidadSede {
   sede: string;
@@ -77,7 +61,7 @@ export interface EscenarioDetalle {
   version: number;
   autor: string;
   modificado: string;
-  estado: EstadoEscenario;
+  estado: EstadoConResultados;
   matriculas: number;
   cumplimiento: number;
   brecha: number;
@@ -93,55 +77,24 @@ export const META_FACTIBLE = 198_300;
 
 export const ESCENARIOS_DETALLE: EscenarioDetalle[] = [
   {
-    id: 'esc03', codigo: 'ESC-03', nombreCorto: 'Escenario 03', descripcion: 'Crecimiento Moderado 2027', version: 4,
-    autor: 'Gerencia Comercial', modificado: '05/10/2026 16:42', estado: 'Activo',
-    matriculas: CORE.escenario, cumplimiento: CORE.cumplimiento, brecha: CORE.brecha,
+    id: 'esc01', codigo: 'ESC-01', nombreCorto: 'Escenario 01', descripcion: 'Retención y Campaña', version: 2,
+    autor: 'Planificación Académica', modificado: '30/09/2026 10:20', estado: 'Simulado',
+    matriculas: 191_400, cumplimiento: 95.7, brecha: -8_600,
     contribuciones: [
-      { name: 'Retención', value: CORE.retencion },
-      { name: 'Campaña Comercial', value: CORE.campana },
-      { name: 'Nuevos Horarios', value: CORE.horarios },
-      { name: 'Precio / Mix', value: CORE.precioMix },
+      { name: 'Retención', value: 3_800 },
+      { name: 'Campaña Comercial', value: 2_500 },
+      { name: 'Precio / Mix', value: 850 },
     ],
-    clasesRequeridas: 8_425, ocupabilidad: 89, factibilidad: 'Factible con restricciones',
+    clasesRequeridas: 8_192, ocupabilidad: 81, factibilidad: 'Factible',
     capacidad: [
-      { sede: 'Miraflores', periodo: '2027-03', disponible: 410, requerida: 424 },
-      { sede: 'San Miguel', periodo: '2027-04', disponible: 355, requerida: 362 },
-      { sede: 'Surco', periodo: '2027-03', disponible: 395, requerida: 382 },
+      { sede: 'Miraflores', periodo: '2027-03', disponible: 410, requerida: 401 },
+      { sede: 'San Miguel', periodo: '2027-04', disponible: 355, requerida: 346 },
+      { sede: 'Surco', periodo: '2027-03', disponible: 395, requerida: 364 },
     ],
   },
   {
-    id: 'esc02', codigo: 'ESC-02', nombreCorto: 'Escenario 02', descripcion: 'Retención Reforzada 2027', version: 2,
-    autor: 'Gerencia Comercial', modificado: '28/09/2026 11:15', estado: 'Guardado',
-    matriculas: 192_300, cumplimiento: 96.2, brecha: -7_700,
-    contribuciones: [
-      { name: 'Retención', value: 6_200 },
-      { name: 'Campaña Comercial', value: 1_850 },
-    ],
-    clasesRequeridas: 8_231, ocupabilidad: 84, factibilidad: 'Factible',
-    capacidad: [
-      { sede: 'Miraflores', periodo: '2027-03', disponible: 410, requerida: 407 },
-      { sede: 'San Miguel', periodo: '2027-04', disponible: 355, requerida: 349 },
-      { sede: 'Surco', periodo: '2027-03', disponible: 395, requerida: 368 },
-    ],
-  },
-  {
-    id: 'esc01', codigo: 'ESC-01', nombreCorto: 'Escenario 01', descripcion: 'Crecimiento Conservador 2027', version: 3,
-    autor: 'Planificación Académica', modificado: '19/09/2026 09:30', estado: 'Guardado',
-    matriculas: 189_600, cumplimiento: 94.8, brecha: -10_400,
-    contribuciones: [
-      { name: 'Retención', value: 3_100 },
-      { name: 'Campaña Comercial', value: 2_250 },
-    ],
-    clasesRequeridas: 8_115, ocupabilidad: 78, factibilidad: 'Factible',
-    capacidad: [
-      { sede: 'Miraflores', periodo: '2027-03', disponible: 410, requerida: 398 },
-      { sede: 'San Miguel', periodo: '2027-04', disponible: 355, requerida: 341 },
-      { sede: 'Surco', periodo: '2027-03', disponible: 395, requerida: 360 },
-    ],
-  },
-  {
-    id: 'escB', codigo: 'ESC-B', nombreCorto: 'Escenario B', descripcion: 'Crecimiento Balanceado', version: 4,
-    autor: 'Gerencia Comercial', modificado: '02/10/2026 18:05', estado: 'Guardado',
+    id: 'esc02', codigo: 'ESC-02', nombreCorto: 'Escenario 02', descripcion: 'Crecimiento Balanceado', version: 4,
+    autor: 'Gerencia Comercial', modificado: '02/10/2026 18:05', estado: 'Simulado',
     matriculas: 198_100, cumplimiento: 99.1, brecha: -1_900,
     contribuciones: [
       { name: 'Retención', value: 5_300 },
@@ -157,24 +110,25 @@ export const ESCENARIOS_DETALLE: EscenarioDetalle[] = [
     ],
   },
   {
-    id: 'escA', codigo: 'ESC-A', nombreCorto: 'Escenario A', descripcion: 'Retención y Campaña', version: 2,
-    autor: 'Planificación Académica', modificado: '30/09/2026 10:20', estado: 'Guardado',
-    matriculas: 191_400, cumplimiento: 95.7, brecha: -8_600,
+    id: 'esc03', codigo: 'ESC-03', nombreCorto: 'Escenario 03', descripcion: 'Crecimiento Moderado 2027', version: 4,
+    autor: 'Gerencia Comercial', modificado: '05/10/2026 16:42', estado: 'Aprobado',
+    matriculas: CORE.escenario, cumplimiento: CORE.cumplimiento, brecha: CORE.brecha,
     contribuciones: [
-      { name: 'Retención', value: 3_800 },
-      { name: 'Campaña Comercial', value: 2_500 },
-      { name: 'Precio / Mix', value: 850 },
+      { name: 'Retención', value: CORE.retencion },
+      { name: 'Campaña Comercial', value: CORE.campana },
+      { name: 'Nuevos Horarios', value: CORE.horarios },
+      { name: 'Precio / Mix', value: CORE.precioMix },
     ],
-    clasesRequeridas: 8_192, ocupabilidad: 81, factibilidad: 'Factible',
+    clasesRequeridas: 8_425, ocupabilidad: 89, factibilidad: 'Factible con restricciones',
     capacidad: [
-      { sede: 'Miraflores', periodo: '2027-03', disponible: 410, requerida: 401 },
-      { sede: 'San Miguel', periodo: '2027-04', disponible: 355, requerida: 346 },
-      { sede: 'Surco', periodo: '2027-03', disponible: 395, requerida: 364 },
+      { sede: 'Miraflores', periodo: '2027-03', disponible: 410, requerida: 424 },
+      { sede: 'San Miguel', periodo: '2027-04', disponible: 355, requerida: 362 },
+      { sede: 'Surco', periodo: '2027-03', disponible: 395, requerida: 382 },
     ],
   },
   {
-    id: 'escC', codigo: 'ESC-C', nombreCorto: 'Escenario C', descripcion: 'Expansión Acelerada', version: 1,
-    autor: 'Gerencia Comercial', modificado: '01/10/2026 15:48', estado: 'Borrador',
+    id: 'esc04', codigo: 'ESC-04', nombreCorto: 'Escenario 04', descripcion: 'Expansión Acelerada', version: 1,
+    autor: 'Gerencia Comercial', modificado: '01/10/2026 15:48', estado: 'Simulado',
     matriculas: 201_800, cumplimiento: 100.9, brecha: 1_800,
     contribuciones: [
       { name: 'Retención', value: 5_600 },
@@ -192,13 +146,30 @@ export const ESCENARIOS_DETALLE: EscenarioDetalle[] = [
   },
 ];
 
-// Comparison scenarios for Screen 4
-export const ESCENARIOS_COMP = [
-  { id: 'baseline', nombre: 'Baseline', matriculas: 184_250, cumplimiento: 92.1, brecha: -15_750, ocupabilidad: 74, brechaCapacidad: 0, estado: 'Referencia' },
-  { id: 'escA', nombre: 'Escenario A', matriculas: 191_400, cumplimiento: 95.7, brecha: -8_600, ocupabilidad: 81, brechaCapacidad: 0, estado: 'Factible' },
-  { id: 'escB', nombre: 'Escenario B', matriculas: 198_100, cumplimiento: 99.1, brecha: -1_900, ocupabilidad: 89, brechaCapacidad: 0, estado: 'Mejor ajuste', highlight: true },
-  { id: 'escC', nombre: 'Escenario C', matriculas: 201_800, cumplimiento: 100.9, brecha: 1_800, ocupabilidad: 103, brechaCapacidad: 18, estado: 'No factible' },
-  { id: 'meta', nombre: 'Meta ICPNA', matriculas: 200_000, cumplimiento: 100, brecha: 0, ocupabilidad: null, brechaCapacidad: null, estado: 'Objetivo' },
+// Scenarios without results yet: calculated fields are shown as "—" (or "Procesando…")
+export interface EscenarioPendiente {
+  id: string;
+  codigo: string;
+  nombreCorto: string;
+  descripcion: string;
+  version: number;
+  autor: string;
+  modificado: string;
+  estado: Exclude<EstadoEscenario, EstadoConResultados>;
+  intervenciones: string[];
+}
+
+export const ESCENARIOS_PENDIENTES: EscenarioPendiente[] = [
+  {
+    id: 'esc05', codigo: 'ESC-05', nombreCorto: 'Escenario 05', descripcion: 'Apertura Sede Norte', version: 1,
+    autor: 'Planificación Académica', modificado: '06/10/2026 12:10', estado: 'Borrador',
+    intervenciones: ['Nueva sede', 'Campaña comercial'],
+  },
+  {
+    id: 'esc06', codigo: 'ESC-06', nombreCorto: 'Escenario 06', descripcion: 'Ajuste de Precio y Retención', version: 2,
+    autor: 'Gerencia Comercial', modificado: '07/10/2026 09:05', estado: 'En proceso',
+    intervenciones: ['Precio / descuento', 'Retención', 'Alumno promedio por clase'],
+  },
 ];
 
 // Granular data — by period (Screen 5 matrix)

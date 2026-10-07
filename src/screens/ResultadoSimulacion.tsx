@@ -7,11 +7,21 @@ import {
   CORE, FOOTNOTE, ESCENARIOS_DETALLE, REF_SUPERIOR_IC, META_FACTIBLE, formatNum,
   type EscenarioDetalle, type FactibilidadEscenario,
 } from '../data/constants';
+import EstadoBadge from '../components/EstadoBadge';
 
 interface Props {
   navigate: (s: Screen) => void;
   escenarioId: string;
 }
+
+// Business-variable names as used in the spec's "Aporte estimado por iniciativa" table
+const VARIABLE_LABEL: Record<string, string> = {
+  'Retención': 'Mejora de retención',
+  'Campaña Comercial': 'Campaña comercial',
+  'Nuevos Horarios': 'Nuevos horarios',
+  'Precio / Mix': 'Ajuste de precio / mix',
+  'Nuevo Curso': 'Nuevo curso',
+};
 
 // Convert contributions to stacked bars (invisible base + visible bar)
 const buildWaterfall = (esc: EscenarioDetalle) => {
@@ -97,29 +107,7 @@ export default function ResultadoSimulacion({ navigate, escenarioId }: Props) {
             <span className="text-sm" style={{ color: '#64748b' }}>
               {esc.nombreCorto} — {esc.descripcion} / Versión {esc.version}
             </span>
-            {esc.estado === 'Borrador' ? (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: '#f8fafc', color: '#64748b', border: '1px solid var(--border)' }}
-              >
-                Borrador
-              </span>
-            ) : (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}
-              >
-                Guardado
-              </span>
-            )}
-            {esc.estado === 'Activo' && (
-              <span
-                className="text-xs px-2 py-0.5 rounded-full font-medium"
-                style={{ background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}
-              >
-                Escenario activo
-              </span>
-            )}
+            <EstadoBadge estado={esc.estado} />
           </div>
         </div>
         <div className="flex gap-2">
@@ -249,7 +237,6 @@ export default function ResultadoSimulacion({ navigate, escenarioId }: Props) {
                 className="flex items-center gap-3 px-4 py-3 rounded mt-3"
                 style={{ background: '#fffbeb', border: '1px solid #fde68a' }}
               >
-                <span style={{ color: '#d97706', fontSize: 20 }}>⟵</span>
                 <div>
                   <div className="text-xs font-semibold" style={{ color: '#92400e' }}>
                     Brecha restante a Meta ICPNA: −{formatNum(Math.abs(esc.brecha))} matrículas
@@ -260,6 +247,67 @@ export default function ResultadoSimulacion({ navigate, escenarioId }: Props) {
                 </div>
               </div>
             )}
+
+            {/* Efecto de las variables de negocio */}
+            <div className="mt-5">
+              <div className="flex items-baseline justify-between mb-2">
+                <div>
+                  <div className="font-semibold text-sm" style={{ color: '#0f172a' }}>Efecto de las variables de negocio</div>
+                  <div className="text-xs mt-0.5" style={{ color: '#64748b' }}>
+                    Contribución de cada variable intervenida al resultado de {esc.nombreCorto} · 12 meses consolidado
+                  </div>
+                </div>
+              </div>
+              <div className="rounded overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: '#64748b' }}>Variable de negocio</th>
+                      <th className="px-3 py-2 text-left font-semibold" style={{ color: '#64748b', width: 130 }}>Tipo de impacto</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: '#64748b', width: 150 }}>Impacto en matrículas</th>
+                      <th className="px-3 py-2 text-right font-semibold" style={{ color: '#64748b', width: 130 }}>Impacto % vs Base</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {esc.contribuciones.map((c) => {
+                      const positivo = c.value >= 0;
+                      const color = positivo ? '#16a34a' : '#dc2626';
+                      const pct = (c.value / CORE.baseline) * 100;
+                      return (
+                        <tr key={c.name} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                          <td className="px-3 py-2">
+                            <span className="inline-flex items-center gap-2 font-medium" style={{ color: positivo ? '#334155' : '#b91c1c' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill={color} aria-hidden="true" style={{ transform: positivo ? undefined : 'rotate(180deg)' }}>
+                                <path d="M12 3l8 9h-5v9H9v-9H4z" />
+                              </svg>
+                              {VARIABLE_LABEL[c.name] ?? c.name}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 font-medium" style={{ color }}>{positivo ? 'Positivo' : 'Negativo'}</td>
+                          <td className="px-3 py-2 text-right font-mono font-semibold" style={{ color }}>
+                            {positivo ? '+' : '−'}{formatNum(Math.abs(c.value))}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono" style={{ color }}>
+                            {positivo ? '+' : '−'}{Math.abs(pct).toFixed(1)}%
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    <tr style={{ background: '#eff6ff' }}>
+                      <td colSpan={2} className="px-3 py-2 font-semibold uppercase tracking-wide" style={{ color: '#1e40af', fontSize: 10.5 }}>
+                        Total impacto acumulado
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold" style={{ color: '#1e40af' }}>
+                        {aporte >= 0 ? '+' : '−'}{formatNum(Math.abs(aporte))}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono font-bold" style={{ color: '#1e40af' }}>
+                        {aporte >= 0 ? '+' : '−'}{Math.abs((aporte / CORE.baseline) * 100).toFixed(1)}%
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </Card>
 

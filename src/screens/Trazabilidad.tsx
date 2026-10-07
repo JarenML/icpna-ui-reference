@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Screen } from '../App';
 import { FOOTNOTE } from '../data/constants';
+import EstadoBadge from '../components/EstadoBadge';
 
 interface Props {
   navigate: (s: Screen) => void;
@@ -73,7 +74,7 @@ const steps = [
   { id: 'baseline', tipo: 'baseline', label: 'Baseline 2027.01', sublabel: '184,250 matrículas proyectadas — Solo lectura' },
   ...interventionSteps.map((i) => ({ id: i.id, tipo: 'intervention', label: i.label, sublabel: `${i.tipo} · ${i.responsable}`, intervention: i })),
   { id: 'engine', tipo: 'engine', label: 'Motor de Simulación', sublabel: 'Reglas + Parámetros + Estadística Simple · No ML' },
-  { id: 'result', tipo: 'result', label: 'Resultado', sublabel: 'Escenario B — 198,100 matrículas' },
+  { id: 'result', tipo: 'result', label: 'Resultado', sublabel: 'Escenario 02 — 198,100 matrículas' },
   { id: 'validation', tipo: 'validation', label: 'Validación de Capacidad', sublabel: 'Factible con restricciones en 2 sedes' },
 ];
 
@@ -109,13 +110,8 @@ export default function Trazabilidad({ navigate }: Props) {
         <div>
           <h1 className="font-bold text-lg" style={{ color: '#0f172a' }}>Trazabilidad del Escenario</h1>
           <div className="flex items-center gap-3 mt-1">
-            <span className="text-sm" style={{ color: '#64748b' }}>Escenario B — Crecimiento Balanceado / Versión 4</span>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}
-            >
-              Guardado
-            </span>
+            <span className="text-sm" style={{ color: '#64748b' }}>Escenario 02 — Crecimiento Balanceado / Versión 4</span>
+            <EstadoBadge estado="Simulado" />
           </div>
         </div>
         <div className="flex gap-2">
@@ -308,7 +304,7 @@ export default function Trazabilidad({ navigate }: Props) {
                 { label: 'Baseline utilizado', value: '2027.01', mono: true },
                 { label: 'Creado', value: '05 Sep 2026' },
                 { label: 'Última modificación', value: '08 Sep 2026' },
-                { label: 'Estado', value: 'Guardado', badge: true, badgeBg: '#f0fdf4', badgeColor: '#16a34a' },
+                { label: 'Estado', value: 'Simulado', badge: true, badgeBg: '#eff6ff', badgeColor: '#1e40af' },
                 { label: 'Autor', value: 'Gerencia Comercial' },
                 { label: 'Intervenciones', value: '4 aplicadas', mono: true },
               ].map((row) => (
@@ -346,7 +342,7 @@ export default function Trazabilidad({ navigate }: Props) {
               {[
                 { label: 'Baseline', value: '184,250', color: '#64748b' },
                 { label: '+ Intervenciones', value: '+13,850', color: '#16a34a' },
-                { label: 'Escenario B', value: '198,100', color: '#1e40af', bold: true },
+                { label: 'Escenario 02', value: '198,100', color: '#1e40af', bold: true },
                 { label: 'Meta ICPNA', value: '200,000', color: '#0369a1' },
                 { label: 'Brecha', value: '−1,900', color: '#d97706' },
                 { label: 'Cumplimiento', value: '99.1%', color: '#16a34a', bold: true },
