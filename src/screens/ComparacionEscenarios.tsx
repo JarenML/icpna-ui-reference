@@ -8,6 +8,7 @@ import { ESCENARIOS_COMP, CORE, FOOTNOTE, formatNum } from '../data/constants';
 
 interface Props {
   navigate: (s: Screen) => void;
+  openEscenario: (id: string) => void;
 }
 
 const criterioOptions = [
@@ -30,7 +31,7 @@ const chartData = [
   { name: 'Escenario C', valor: 201_800 },
 ];
 
-export default function ComparacionEscenarios({ navigate }: Props) {
+export default function ComparacionEscenarios({ openEscenario }: Props) {
   const [criterio, setCriterio] = useState(criterioOptions[0]);
   const [selected, setSelected] = useState<string[]>(['baseline', 'escA', 'escB', 'escC', 'meta']);
 
@@ -297,7 +298,7 @@ export default function ComparacionEscenarios({ navigate }: Props) {
             </div>
 
             <button
-              onClick={() => navigate('escenarios')}
+              onClick={() => openEscenario('escB')}
               className="w-full text-sm py-2 rounded font-semibold"
               style={{ background: '#1e40af', color: '#fff', border: 'none' }}
             >

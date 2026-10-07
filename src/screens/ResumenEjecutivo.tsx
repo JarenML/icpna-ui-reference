@@ -6,8 +6,19 @@ import {
 } from 'recharts';
 import type { Screen } from '../App';
 import {
-  CORE, MENSUAL, TOP_COMBINACIONES, FOOTNOTE, formatNum, formatPct,
+  CORE, MENSUAL, TOP_COMBINACIONES, FOOTNOTE, ESCENARIOS_NUMERADOS, formatNum, formatPct,
 } from '../data/constants';
+
+type Tono = 'ok' | 'warn' | 'error';
+
+const TONOS: Record<Tono, { color: string; bg: string }> = {
+  ok: { color: '#16a34a', bg: '#f0fdf4' },
+  warn: { color: '#d97706', bg: '#fffbeb' },
+  error: { color: '#dc2626', bg: '#fef2f2' },
+};
+
+const ESCENARIOS = ESCENARIOS_NUMERADOS;
+const ESCENARIO_ACTIVO = ESCENARIOS.find((e) => e.id === 'esc03')!;
 
 const Card = ({ children, className = '', style = {} }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) => (
   <div
@@ -102,6 +113,18 @@ export default function ResumenEjecutivo({ navigate }: Props) {
   const [filPeriodo, setFilPeriodo] = useState('Todos');
   const [filModalidad, setFilModalidad] = useState('Todas');
   const [filSede, setFilSede] = useState('Todas');
+  const [filEscenario, setFilEscenario] = useState<string>(ESCENARIO_ACTIVO.label);
+
+  const esc = ESCENARIOS.find((e) => e.label === filEscenario) ?? ESCENARIO_ACTIVO;
+  const cumplimientoTono: Tono = esc.cumplimiento >= 98 ? 'ok' : 'warn';
+  const brechaTono: Tono = esc.brecha >= 0 ? 'ok' : 'warn';
+  const factor = esc.matriculas / CORE.escenario;
+  const mensual = MENSUAL.map((m) => ({
+    ...m,
+    escenario: Math.round(m.escenario * factor),
+    icSup: Math.round(m.icSup * factor),
+    icInf: Math.round(m.icInf * factor),
+  }));
 
   const filterSelect = (label: string, value: string, onChange: (v: string) => void, opts: string[]) => (
     <div className="flex items-center gap-1.5">
@@ -143,6 +166,7 @@ export default function ResumenEjecutivo({ navigate }: Props) {
           {filterSelect('Modalidad', filModalidad, setFilModalidad, ['Todas', 'Presencial', 'Virtual', 'Semipresencial'])}
           {filterSelect('Sede', filSede, setFilSede, ['Todas', 'Miraflores', 'San Miguel', 'Surco', 'San Isidro', 'La Molina'])}
           {filterSelect('Programa', 'Todos', () => {}, ['Todos', 'General English', 'Business English', 'Conversational'])}
+          {filterSelect('Escenario', filEscenario, setFilEscenario, ESCENARIOS.map((e) => e.label))}
         </div>
       </Card>
 
@@ -158,33 +182,33 @@ export default function ResumenEjecutivo({ navigate }: Props) {
         />
         <KpiCard
           label="Escenario seleccionado"
-          value={formatNum(CORE.escenario)}
-          sub="Esc. 03 — Crec. Moderado"
+          value={formatNum(esc.matriculas)}
+          sub={esc.label}
           color="#0369a1"
         />
         <KpiCard
           label="Cumplimiento de Meta"
-          value={`${CORE.cumplimiento}%`}
+          value={`${esc.cumplimiento}%`}
           sub="vs Meta ICPNA"
-          color="#16a34a"
-          badge="Cercano a Meta"
-          bgColor="#f0fdf4"
+          color={TONOS[cumplimientoTono].color}
+          badge={esc.cumplimiento >= 100 ? 'Meta alcanzada' : esc.cumplimiento >= 98 ? 'Cercano a Meta' : 'Por debajo de Meta'}
+          bgColor={TONOS[cumplimientoTono].bg}
         />
         <KpiCard
           label="Brecha a Meta"
-          value={formatNum(CORE.brecha).replace('-', '−') + ' mat.'}
-          sub="Matrículas faltantes"
-          color="#d97706"
-          badge="Con observaciones"
-          bgColor="#fffbeb"
+          value={(esc.brecha > 0 ? '+' : '') + formatNum(esc.brecha).replace('-', '−') + ' mat.'}
+          sub={esc.brecha >= 0 ? 'Matrículas sobre meta' : 'Matrículas faltantes'}
+          color={TONOS[brechaTono].color}
+          badge={esc.brecha >= 0 ? 'Supera la meta' : 'Con observaciones'}
+          bgColor={TONOS[brechaTono].bg}
         />
         <KpiCard
           label="Factibilidad Operativa"
-          value="Con obs."
-          sub="2 sedes con restricciones"
-          color="#d97706"
-          badge="Revisar capacidad"
-          bgColor="#fffbeb"
+          value={esc.factibilidad}
+          sub={esc.factibilidadSub}
+          color={TONOS[esc.factibilidadTono].color}
+          badge={esc.factibilidadBadge}
+          bgColor={TONOS[esc.factibilidadTono].bg}
         />
       </div>
 
@@ -197,7 +221,7 @@ export default function ResumenEjecutivo({ navigate }: Props) {
           />
           <div className="p-4 pb-2">
             <ResponsiveContainer width="100%" height={280}>
-              <ComposedChart data={MENSUAL} margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
+              <ComposedChart data={mensual}margin={{ top: 8, right: 16, left: 0, bottom: 4 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="periodo" tick={{ fontSize: 11, fill: '#64748b' }} />
                 <YAxis
@@ -254,7 +278,7 @@ export default function ResumenEjecutivo({ navigate }: Props) {
                 />
                 <Line
                   dataKey="escenario"
-                  name="Escenario 03"
+                  name={esc.nombre}
                   stroke="#2563eb"
                   strokeWidth={2.5}
                   dot={false}
@@ -263,7 +287,7 @@ export default function ResumenEjecutivo({ navigate }: Props) {
                 <Line
                   dataKey="meta"
                   name="Meta ICPNA"
-                  stroke="#1e40af"
+                  stroke="#16a34a"
                   strokeWidth={2}
                   strokeDasharray="8 4"
                   dot={false}

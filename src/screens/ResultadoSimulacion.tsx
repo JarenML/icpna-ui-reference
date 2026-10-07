@@ -3,39 +3,39 @@ import {
   ResponsiveContainer, ReferenceLine, LabelList,
 } from 'recharts';
 import type { Screen } from '../App';
-import { CORE, FOOTNOTE, formatNum } from '../data/constants';
+import {
+  CORE, FOOTNOTE, ESCENARIOS_DETALLE, REF_SUPERIOR_IC, META_FACTIBLE, formatNum,
+  type EscenarioDetalle, type FactibilidadEscenario,
+} from '../data/constants';
 
 interface Props {
   navigate: (s: Screen) => void;
+  escenarioId: string;
 }
 
-// Waterfall data
-const waterfallRaw = [
-  { name: 'Baseline', abs: CORE.baseline, type: 'base' },
-  { name: 'Retención', abs: CORE.retencion, type: 'pos' },
-  { name: 'Campaña Comercial', abs: CORE.campana, type: 'pos' },
-  { name: 'Nuevos Horarios', abs: CORE.horarios, type: 'pos' },
-  { name: 'Precio / Mix', abs: CORE.precioMix, type: 'pos' },
-  { name: 'Escenario', abs: CORE.escenario, type: 'result' },
-];
+// Convert contributions to stacked bars (invisible base + visible bar)
+const buildWaterfall = (esc: EscenarioDetalle) => {
+  let acc = CORE.baseline;
+  return [
+    { name: 'Baseline', abs: CORE.baseline, type: 'base', base: 0, bar: CORE.baseline },
+    ...esc.contribuciones.map((c) => {
+      const row = { name: c.name, abs: c.value, type: 'pos', base: acc, bar: c.value };
+      acc += c.value;
+      return row;
+    }),
+    { name: 'Escenario', abs: esc.matriculas, type: 'result', base: 0, bar: esc.matriculas },
+  ];
+};
 
-// Convert to stacked bars (invisible base + visible bar)
-const waterfallData = waterfallRaw.map((d, i) => {
-  if (d.type === 'base' || d.type === 'result') {
-    return { ...d, base: 0, bar: d.abs };
-  }
-  // cumulative bottom
-  const bottom = waterfallRaw.slice(0, i).reduce((acc, x) => {
-    if (x.type === 'base') return acc + x.abs;
-    if (x.type === 'pos') return acc + x.abs;
-    return acc;
-  }, 0);
-  return { ...d, base: bottom, bar: d.abs };
-});
+const FACT_STYLE: Record<FactibilidadEscenario, { color: string; bg: string; border: string; icon: string }> = {
+  'Factible': { color: '#15803d', bg: '#f0fdf4', border: '#bbf7d0', icon: '✓' },
+  'Factible con restricciones': { color: '#b45309', bg: '#fffbeb', border: '#fde68a', icon: '⚠' },
+  'No factible': { color: '#b91c1c', bg: '#fef2f2', border: '#fecaca', icon: '✕' },
+};
 
 const CustomWaterfallTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
-  const d = waterfallData.find((x) => x.name === label);
+  const d = payload[0].payload;
   return (
     <div style={{
       background: '#fff', border: '1px solid var(--border)', borderRadius: 6,
@@ -56,23 +56,70 @@ const Card = ({ children, style = {} }: { children: React.ReactNode; style?: Rea
   </div>
 );
 
-export default function ResultadoSimulacion({ navigate }: Props) {
+export default function ResultadoSimulacion({ navigate, escenarioId }: Props) {
+  const esc = ESCENARIOS_DETALLE.find((e) => e.id === escenarioId) ?? ESCENARIOS_DETALLE[0];
+  const waterfallData = buildWaterfall(esc);
+  const aporte = esc.matriculas - CORE.baseline;
+  const alertasCapacidad = esc.capacidad.filter((c) => c.requerida > c.disponible).length;
+  const fact = FACT_STYLE[esc.factibilidad];
+  const superaMeta = esc.brecha >= 0;
+  const sobreRangoCentral = esc.matriculas > REF_SUPERIOR_IC;
   return (
     <div className="p-5 space-y-4 min-w-0">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
+          <button
+            onClick={() => navigate('listaEscenarios')}
+            title="Volver al listado de escenarios"
+            className="group inline-flex items-center gap-2 mb-3 pl-1 pr-3 py-1 rounded-md bg-white border border-slate-200 shadow-sm text-xs font-medium text-slate-700 transition-all duration-150 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-800 hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 active:scale-[0.98]"
+          >
+            <span className="flex items-center justify-center w-6 h-6 rounded bg-slate-100 text-slate-500 transition-colors duration-150 group-hover:bg-blue-600 group-hover:text-white">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="transition-transform duration-150 group-hover:-translate-x-0.5"
+                aria-hidden="true"
+              >
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </span>
+            <span>Todos los escenarios</span>
+          </button>
           <h1 className="font-bold text-lg" style={{ color: '#0f172a' }}>Resultado de Simulación</h1>
           <div className="flex items-center gap-3 mt-1">
             <span className="text-sm" style={{ color: '#64748b' }}>
-              Escenario 03 — Crecimiento Moderado 2027 / Versión 4
+              {esc.nombreCorto} — {esc.descripcion} / Versión {esc.version}
             </span>
-            <span
-              className="text-xs px-2 py-0.5 rounded-full font-medium"
-              style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}
-            >
-              Guardado
-            </span>
+            {esc.estado === 'Borrador' ? (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: '#f8fafc', color: '#64748b', border: '1px solid var(--border)' }}
+              >
+                Borrador
+              </span>
+            ) : (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }}
+              >
+                Guardado
+              </span>
+            )}
+            {esc.estado === 'Activo' && (
+              <span
+                className="text-xs px-2 py-0.5 rounded-full font-medium"
+                style={{ background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}
+              >
+                Escenario activo
+              </span>
+            )}
           </div>
         </div>
         <div className="flex gap-2">
@@ -104,11 +151,13 @@ export default function ResultadoSimulacion({ navigate }: Props) {
       <div className="grid grid-cols-6 gap-3">
         {[
           { label: 'Baseline', value: formatNum(CORE.baseline), color: '#64748b', sub: 'Solo lectura' },
-          { label: 'Aporte total de intervenciones', value: `+${formatNum(CORE.totalContribucion)}`, color: '#16a34a', sub: '4 iniciativas' },
-          { label: 'Escenario 03', value: formatNum(CORE.escenario), color: '#1e40af', sub: 'Resultado simulado' },
+          { label: 'Aporte total de intervenciones', value: `+${formatNum(aporte)}`, color: '#16a34a', sub: `${esc.contribuciones.length} iniciativas` },
+          { label: esc.nombreCorto, value: formatNum(esc.matriculas), color: '#1e40af', sub: 'Resultado simulado' },
           { label: 'Meta ICPNA', value: formatNum(CORE.meta), color: '#0369a1', sub: 'Objetivo institucional' },
-          { label: 'Brecha restante', value: formatNum(Math.abs(CORE.brecha)), color: '#d97706', sub: 'Matrículas al objetivo' },
-          { label: 'Cumplimiento', value: `${CORE.cumplimiento}%`, color: '#16a34a', sub: 'Meta ICPNA' },
+          superaMeta
+            ? { label: 'Excedente a Meta', value: `+${formatNum(esc.brecha)}`, color: '#16a34a', sub: 'Matrículas sobre el objetivo' }
+            : { label: 'Brecha restante', value: formatNum(Math.abs(esc.brecha)), color: '#d97706', sub: 'Matrículas al objetivo' },
+          { label: 'Cumplimiento', value: `${esc.cumplimiento}%`, color: esc.cumplimiento >= 98 ? '#16a34a' : '#d97706', sub: 'Meta ICPNA' },
         ].map((k) => (
           <Card key={k.label} style={{ padding: '14px 16px' }}>
             <div className="text-xs font-medium uppercase tracking-wide mb-1" style={{ color: '#64748b', fontSize: 10.5 }}>
@@ -180,20 +229,37 @@ export default function ResultadoSimulacion({ navigate }: Props) {
             </ResponsiveContainer>
 
             {/* Brecha callout */}
-            <div
-              className="flex items-center gap-3 px-4 py-3 rounded mt-3"
-              style={{ background: '#fffbeb', border: '1px solid #fde68a' }}
-            >
-              <span style={{ color: '#d97706', fontSize: 20 }}>⟵</span>
-              <div>
-                <div className="text-xs font-semibold" style={{ color: '#92400e' }}>
-                  Brecha restante a Meta ICPNA: −{formatNum(Math.abs(CORE.brecha))} matrículas
-                </div>
-                <div className="text-xs mt-0.5" style={{ color: '#b45309' }}>
-                  El escenario alcanza el {CORE.cumplimiento}% de la meta. Se requieren intervenciones adicionales o ajuste de la Meta Factible.
+            {superaMeta ? (
+              <div
+                className="flex items-center gap-3 px-4 py-3 rounded mt-3"
+                style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}
+              >
+                <span style={{ color: '#16a34a', fontSize: 20 }}>✓</span>
+                <div>
+                  <div className="text-xs font-semibold" style={{ color: '#166534' }}>
+                    Supera la Meta ICPNA en +{formatNum(esc.brecha)} matrículas
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: '#15803d' }}>
+                    El escenario alcanza el {esc.cumplimiento}% de la meta. Verifique la factibilidad operativa antes de adoptarlo.
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div
+                className="flex items-center gap-3 px-4 py-3 rounded mt-3"
+                style={{ background: '#fffbeb', border: '1px solid #fde68a' }}
+              >
+                <span style={{ color: '#d97706', fontSize: 20 }}>⟵</span>
+                <div>
+                  <div className="text-xs font-semibold" style={{ color: '#92400e' }}>
+                    Brecha restante a Meta ICPNA: −{formatNum(Math.abs(esc.brecha))} matrículas
+                  </div>
+                  <div className="text-xs mt-0.5" style={{ color: '#b45309' }}>
+                    El escenario alcanza el {esc.cumplimiento}% de la meta. Se requieren intervenciones adicionales o ajuste de la Meta Factible.
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </Card>
 
@@ -213,8 +279,8 @@ export default function ResultadoSimulacion({ navigate }: Props) {
             <div className="p-4 space-y-2">
               {[
                 { label: 'Baseline', value: formatNum(CORE.baseline), color: '#64748b' },
-                { label: 'Ref. superior IC 95%', value: '194,600', color: '#93c5fd' },
-                { label: 'Escenario 03', value: formatNum(CORE.escenario), color: '#2563eb' },
+                { label: 'Ref. superior IC 95%', value: formatNum(REF_SUPERIOR_IC), color: '#93c5fd' },
+                { label: esc.nombreCorto, value: formatNum(esc.matriculas), color: '#2563eb' },
                 { label: 'Meta ICPNA', value: formatNum(CORE.meta), color: '#1e40af' },
               ].map((row) => (
                 <div key={row.label} className="flex items-center justify-between py-1.5" style={{ borderBottom: '1px solid #f8fafc' }}>
@@ -226,7 +292,9 @@ export default function ResultadoSimulacion({ navigate }: Props) {
                 className="text-xs p-2.5 rounded mt-2"
                 style={{ background: '#f8fafc', color: '#64748b', lineHeight: 1.6 }}
               >
-                El escenario supera el rango central del Baseline por efecto de las intervenciones incorporadas.
+                {sobreRangoCentral
+                  ? 'El escenario supera el rango central del Baseline por efecto de las intervenciones incorporadas.'
+                  : 'El escenario se mantiene dentro del rango central del Baseline pese a las intervenciones incorporadas.'}{' '}
                 Este resultado es una <strong>simulación basada en reglas, supuestos y estimaciones interpretables</strong>, no una predicción de Machine Learning.
               </div>
             </div>
@@ -238,18 +306,18 @@ export default function ResultadoSimulacion({ navigate }: Props) {
               <div className="font-semibold text-sm" style={{ color: '#0f172a' }}>Factibilidad Operativa</div>
               <div
                 className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full mt-1"
-                style={{ background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }}
+                style={{ background: fact.bg, color: fact.color, border: `1px solid ${fact.border}` }}
               >
-                ⚠ Factible con restricciones
+                {fact.icon} {esc.factibilidad}
               </div>
             </div>
             <div className="p-4">
               <div className="grid grid-cols-2 gap-2 mb-3">
                 {[
-                  { label: 'Alumnos estimados', value: '196,840' },
-                  { label: 'Clases requeridas', value: '8,425' },
-                  { label: 'Ocupabilidad prom.', value: '89%' },
-                  { label: 'Alertas capacidad', value: '2', red: true },
+                  { label: 'Alumnos estimados', value: formatNum(esc.matriculas) },
+                  { label: 'Clases requeridas', value: formatNum(esc.clasesRequeridas) },
+                  { label: 'Ocupabilidad prom.', value: `${esc.ocupabilidad}%`, red: esc.ocupabilidad > 100 },
+                  { label: 'Alertas capacidad', value: String(alertasCapacidad), red: alertasCapacidad > 0 },
                 ].map((m) => (
                   <div key={m.label} className="p-2 rounded" style={{ background: '#f8fafc', border: '1px solid #f1f5f9' }}>
                     <div className="text-xs mb-0.5" style={{ color: '#94a3b8' }}>{m.label}</div>
@@ -269,11 +337,18 @@ export default function ResultadoSimulacion({ navigate }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {[
-                    { sede: 'Miraflores', periodo: '2027-03', disp: '410', req: '424', brecha: '+14', estado: 'Restricción', red: true },
-                    { sede: 'San Miguel', periodo: '2027-04', disp: '355', req: '362', brecha: '+7', estado: 'Restricción', red: true },
-                    { sede: 'Surco', periodo: '2027-03', disp: '395', req: '382', brecha: '−13', estado: 'Factible', red: false },
-                  ].map((row, i) => (
+                  {esc.capacidad.map((c) => {
+                    const diff = c.requerida - c.disponible;
+                    return {
+                      sede: c.sede,
+                      periodo: c.periodo,
+                      disp: formatNum(c.disponible),
+                      req: formatNum(c.requerida),
+                      brecha: diff > 0 ? `+${diff}` : `−${Math.abs(diff)}`,
+                      estado: diff > 0 ? 'Restricción' : 'Factible',
+                      red: diff > 0,
+                    };
+                  }).map((row, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f8fafc' }}>
                       <td className="py-1.5 font-medium" style={{ color: '#334155' }}>{row.sede}</td>
                       <td className="py-1.5" style={{ color: '#64748b' }}>{row.periodo}</td>
@@ -306,10 +381,10 @@ export default function ResultadoSimulacion({ navigate }: Props) {
                   Meta Factible estimada (capacidad actual):
                 </div>
                 <div className="font-mono font-bold mt-0.5" style={{ color: '#1e40af', fontSize: 18 }}>
-                  198,300 matrículas
+                  {formatNum(META_FACTIBLE)} matrículas
                 </div>
                 <div className="text-xs mt-0.5" style={{ color: '#3b82f6' }}>
-                  Distinto de la Meta ICPNA (200,000). Considera restricciones operativas actuales.
+                  Distinto de la Meta ICPNA ({formatNum(CORE.meta)}). Considera restricciones operativas actuales.
                 </div>
               </div>
             </div>

@@ -9,7 +9,7 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: 'resumen', label: 'Resumen Ejecutivo', icon: '◈' },
-  { id: 'escenarios', label: 'Escenarios', icon: '⊡' },
+  { id: 'listaEscenarios', label: 'Escenarios', icon: '⊡' },
   { id: 'intervenciones', label: 'Intervenciones', icon: '⊕' },
   { id: 'comparacion', label: 'Comparación', icon: '⊞' },
   { id: 'granular', label: 'Reporte Granular', icon: '⊟' },
@@ -70,7 +70,7 @@ export default function Sidebar({ current, navigate }: Props) {
       {/* Nav items */}
       <nav className="flex-1 px-2">
         {navItems.map((item) => {
-          const active = current === item.id;
+          const active = current === item.id || (item.id === 'listaEscenarios' && current === 'escenarios');
           return (
             <button
               key={item.id}

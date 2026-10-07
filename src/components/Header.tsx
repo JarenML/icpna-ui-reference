@@ -2,6 +2,7 @@ import type { Screen } from '../App';
 
 const screenTitles: Record<Screen, string> = {
   resumen: 'Resumen Ejecutivo',
+  listaEscenarios: 'Escenarios',
   escenarios: 'Resultado de Simulación',
   intervenciones: 'Construcción de Escenario',
   comparacion: 'Comparación de Escenarios',
@@ -15,7 +16,7 @@ interface Props {
   navigate: (s: Screen) => void;
 }
 
-export default function Header({ screen }: Props) {
+export default function Header({ screen, navigate }: Props) {
   return (
     <header
       className="flex items-center justify-between px-6 flex-shrink-0"
@@ -32,6 +33,18 @@ export default function Header({ screen }: Props) {
         <span style={{ color: '#cbd5e1' }}>|</span>
         <span className="font-medium text-sm" style={{ color: '#334155' }}>Planificación de Matrícula</span>
         <span style={{ color: '#cbd5e1' }}>›</span>
+        {screen === 'escenarios' && (
+          <>
+            <button
+              onClick={() => navigate('listaEscenarios')}
+              className="text-sm hover:underline"
+              style={{ color: '#64748b' }}
+            >
+              Escenarios
+            </button>
+            <span style={{ color: '#cbd5e1' }}>›</span>
+          </>
+        )}
         <span className="text-sm" style={{ color: '#64748b' }}>{screenTitles[screen]}</span>
       </div>
 

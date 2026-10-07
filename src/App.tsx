@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import ResumenEjecutivo from './screens/ResumenEjecutivo';
 import ConstruccionEscenario from './screens/ConstruccionEscenario';
+import ListaEscenarios from './screens/ListaEscenarios';
 import ResultadoSimulacion from './screens/ResultadoSimulacion';
 import ComparacionEscenarios from './screens/ComparacionEscenarios';
 import ReporteGranular from './screens/ReporteGranular';
@@ -12,6 +13,7 @@ import SimulationLoader from './components/SimulationLoader';
 
 export type Screen =
   | 'resumen'
+  | 'listaEscenarios'
   | 'escenarios'
   | 'intervenciones'
   | 'comparacion'
@@ -22,13 +24,20 @@ export type Screen =
 export default function App() {
   const [screen, setScreen] = useState<Screen>('resumen');
   const [simulating, setSimulating] = useState(false);
+  const [escenarioId, setEscenarioId] = useState('esc03');
 
   const navigate = (s: Screen) => setScreen(s);
+
+  const openEscenario = (id: string) => {
+    setEscenarioId(id);
+    setScreen('escenarios');
+  };
 
   const runSimulation = () => {
     setSimulating(true);
     setTimeout(() => {
       setSimulating(false);
+      setEscenarioId('esc03');
       setScreen('escenarios');
     }, 2200);
   };
@@ -37,12 +46,14 @@ export default function App() {
     switch (screen) {
       case 'resumen':
         return <ResumenEjecutivo navigate={navigate} />;
+      case 'listaEscenarios':
+        return <ListaEscenarios navigate={navigate} openEscenario={openEscenario} />;
       case 'escenarios':
-        return <ResultadoSimulacion navigate={navigate} />;
+        return <ResultadoSimulacion navigate={navigate} escenarioId={escenarioId} />;
       case 'intervenciones':
         return <ConstruccionEscenario navigate={navigate} onSimulate={runSimulation} />;
       case 'comparacion':
-        return <ComparacionEscenarios navigate={navigate} />;
+        return <ComparacionEscenarios navigate={navigate} openEscenario={openEscenario} />;
       case 'granular':
         return <ReporteGranular navigate={navigate} />;
       case 'alertas':
