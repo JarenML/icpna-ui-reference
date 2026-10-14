@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Screen } from '../App';
 import { FOOTNOTE } from '../data/constants';
 import EstadoBadge from '../components/EstadoBadge';
+import OutputSQLPanel, { TABLA_BASELINE } from '../components/OutputSQLPanel';
 
 interface Props {
   navigate: (s: Screen) => void;
@@ -71,7 +72,7 @@ const interventionSteps = [
 ];
 
 const steps = [
-  { id: 'baseline', tipo: 'baseline', label: 'Baseline 2027.01', sublabel: '184,250 matrículas proyectadas — Solo lectura' },
+  { id: 'baseline', tipo: 'baseline', label: 'Baseline 2027.01', sublabel: `184,250 matrículas proyectadas — Solo lectura · Fuente SQL: ${TABLA_BASELINE}` },
   ...interventionSteps.map((i) => ({ id: i.id, tipo: 'intervention', label: i.label, sublabel: `${i.tipo} · ${i.responsable}`, intervention: i })),
   { id: 'engine', tipo: 'engine', label: 'Motor de Simulación', sublabel: 'Reglas + Parámetros + Estadística Simple · No ML' },
   { id: 'result', tipo: 'result', label: 'Resultado', sublabel: 'Escenario 02 — 198,100 matrículas' },
@@ -307,6 +308,7 @@ export default function Trazabilidad({ navigate }: Props) {
                 { label: 'Estado', value: 'Simulado', badge: true, badgeBg: '#eff6ff', badgeColor: '#1e40af' },
                 { label: 'Autor', value: 'Gerencia Comercial' },
                 { label: 'Intervenciones', value: '4 aplicadas', mono: true },
+                { label: 'Baseline en SQL', value: 'Registrado', badge: true, badgeBg: '#f0fdfa', badgeColor: '#0f766e' },
               ].map((row) => (
                 <div key={row.label} className="flex justify-between items-center py-1" style={{ borderBottom: '1px solid #f8fafc' }}>
                   <span className="text-xs" style={{ color: '#64748b' }}>{row.label}</span>
@@ -392,6 +394,8 @@ export default function Trazabilidad({ navigate }: Props) {
           </div>
         </div>
       </div>
+
+      <OutputSQLPanel />
 
       <div className="pt-4 pb-4">
         <p className="text-xs text-center" style={{ color: '#94a3b8' }}>{FOOTNOTE}</p>
