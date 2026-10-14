@@ -1,11 +1,9 @@
 import { useState } from 'react';
 import type { Screen } from '../App';
-import { FOOTNOTE, ESCENARIOS_DETALLE, ESCENARIOS_PENDIENTES } from '../data/constants';
+import { FOOTNOTE, ESCENARIOS_DETALLE, ESCENARIOS_PENDIENTES, type EscenarioPendiente } from '../data/constants';
 
 // Every scenario an intervention can belong to (with or without results)
-const ESCENARIOS = [...ESCENARIOS_DETALLE, ...ESCENARIOS_PENDIENTES]
-  .sort((a, b) => a.codigo.localeCompare(b.codigo));
-const escenarioDe = (id: string) => ESCENARIOS.find((e) => e.id === id);
+const ESCENARIOS_BASE = [...ESCENARIOS_DETALLE, ...ESCENARIOS_PENDIENTES];
 
 interface Intervention {
   id: number;
@@ -102,9 +100,12 @@ const TIPOS_INTERVENCION = [
 interface Props {
   navigate: (s: Screen) => void;
   onSimulate: () => void;
+  creados: EscenarioPendiente[];
 }
 
-export default function ConstruccionEscenario({ navigate, onSimulate }: Props) {
+export default function ConstruccionEscenario({ navigate, onSimulate, creados }: Props) {
+  const ESCENARIOS = [...ESCENARIOS_BASE, ...creados].sort((a, b) => a.codigo.localeCompare(b.codigo));
+  const escenarioDe = (id: string) => ESCENARIOS.find((e) => e.id === id);
   const [interventions, setInterventions] = useState(initialInterventions);
   const [panelOpen, setPanelOpen] = useState(false);
   const [form, setForm] = useState({

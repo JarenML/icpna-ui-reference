@@ -2,19 +2,22 @@ import { useState } from 'react';
 import type { Screen } from '../App';
 import {
   CORE, ESCENARIOS_DETALLE, ESCENARIOS_PENDIENTES, FOOTNOTE, formatNum,
-  type EscenarioDetalle, type FactibilidadEscenario,
+  type EscenarioDetalle, type EscenarioPendiente, type FactibilidadEscenario,
 } from '../data/constants';
 import EstadoBadge from '../components/EstadoBadge';
+import NuevoEscenarioModal from '../components/NuevoEscenarioModal';
 
 interface Props {
   navigate: (s: Screen) => void;
   openEscenario: (id: string) => void;
+  creados: EscenarioPendiente[];
+  onCrear: (e: EscenarioPendiente) => void;
 }
 
 // Scenarios with results carry them in `resultado`; Borrador / En proceso rows have none
-const FILAS = [
+const construirFilas = (creados: EscenarioPendiente[]) => [
   ...ESCENARIOS_DETALLE.map((e) => ({ ...e, intervenciones: e.contribuciones.length, resultado: e as EscenarioDetalle | null })),
-  ...ESCENARIOS_PENDIENTES.map((e) => ({ ...e, intervenciones: e.intervenciones.length, resultado: null })),
+  ...[...ESCENARIOS_PENDIENTES, ...creados].map((e) => ({ ...e, intervenciones: e.intervenciones.length, resultado: null })),
 ].sort((a, b) => a.codigo.localeCompare(b.codigo));
 
 const FACT_STYLE: Record<FactibilidadEscenario, { color: string; bg: string; border: string }> = {
@@ -31,7 +34,10 @@ const Card = ({ children, style = {} }: { children: React.ReactNode; style?: Rea
   </div>
 );
 
-export default function ListaEscenarios({ navigate, openEscenario }: Props) {
+export default function ListaEscenarios({ navigate, openEscenario, creados, onCrear }: Props) {
+  const FILAS = construirFilas(creados);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [recienCreado, setRecienCreado] = useState<EscenarioPendiente | null>(null);
   const [busqueda, setBusqueda] = useState('');
   const [filEstado, setFilEstado] = useState('Todos');
   const [filFact, setFilFact] = useState('Todas');
@@ -84,14 +90,59 @@ export default function ListaEscenarios({ navigate, openEscenario }: Props) {
             Comparar escenarios
           </button>
           <button
-            onClick={() => navigate('intervenciones')}
-            className="text-xs px-3 py-1.5 rounded font-medium"
-            style={{ background: '#1e40af', color: '#fff', border: 'none' }}
+            onClick={() => setModalOpen(true)}
+            className="text-xs px-3 py-1.5 rounded font-medium transition-colors bg-blue-800 hover:bg-blue-900"
+            style={{ color: '#fff', border: 'none' }}
           >
             + Nuevo escenario
           </button>
         </div>
       </div>
+
+      {/* Success banner after creating a scenario */}
+      {recienCreado && (
+        <div
+          className="flex items-center gap-3 px-4 py-3 rounded"
+          style={{ background: '#f0fdf4', border: '1px solid #bbf7d0' }}
+          role="status"
+        >
+          <span
+            className="flex items-center justify-center rounded-full flex-shrink-0"
+            style={{ width: 22, height: 22, background: '#16a34a', color: '#fff' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M5 12l5 5L20 7" />
+            </svg>
+          </span>
+          <div className="flex-1 text-xs">
+            <div className="font-semibold" style={{ color: '#166534' }}>
+              {recienCreado.codigo} — {recienCreado.descripcion} creado como Borrador
+            </div>
+            <div className="mt-0.5" style={{ color: '#15803d' }}>
+              {recienCreado.intervenciones.length
+                ? `Incluye ${recienCreado.intervenciones.length} intervenciones copiadas. Revíselas y ejecute la simulación para obtener resultados.`
+                : 'Agregue intervenciones y ejecute la simulación para obtener resultados.'}
+            </div>
+          </div>
+          <button
+            onClick={() => navigate('intervenciones')}
+            className="text-xs px-3 py-1.5 rounded font-medium transition-colors bg-white hover:bg-green-50"
+            style={{ border: '1px solid #86efac', color: '#166534' }}
+          >
+            Agregar intervenciones →
+          </button>
+          <button
+            onClick={() => setRecienCreado(null)}
+            aria-label="Cerrar aviso"
+            className="flex items-center justify-center rounded hover:bg-green-100"
+            style={{ width: 24, height: 24, color: '#15803d' }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* Summary strip */}
       <div className="grid grid-cols-4 gap-3">
@@ -156,7 +207,8 @@ export default function ListaEscenarios({ navigate, openEscenario }: Props) {
               {filas.map((f) => {
                 const r = f.resultado;
                 const aprobadoFila = f.estado === 'Aprobado';
-                const rowBg = aprobadoFila ? '#f6fdf8' : '#fff';
+                const nuevo = f.id === recienCreado?.id;
+                const rowBg = aprobadoFila ? '#f6fdf8' : nuevo ? '#f8fbff' : '#fff';
                 return (
                   <tr
                     key={f.id}
@@ -165,10 +217,15 @@ export default function ListaEscenarios({ navigate, openEscenario }: Props) {
                     onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = '#f1f5f9'; }}
                     onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = rowBg; }}
                   >
-                    <td className="px-4 py-3" style={{ borderLeft: `3px solid ${aprobadoFila ? '#16a34a' : 'transparent'}` }}>
+                    <td className="px-4 py-3" style={{ borderLeft: `3px solid ${aprobadoFila ? '#16a34a' : nuevo ? '#2563eb' : 'transparent'}` }}>
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-semibold whitespace-nowrap" style={{ color: '#1e40af' }}>{f.codigo}</span>
                         <span className="font-medium" style={{ color: '#0f172a' }}>{f.descripcion}</span>
+                        {nuevo && (
+                          <span className="px-1.5 rounded font-semibold whitespace-nowrap" style={{ fontSize: 10, background: '#dbeafe', color: '#1e40af' }}>
+                            Nuevo
+                          </span>
+                        )}
                         {aprobadoFila && (
                           <span className="px-1.5 rounded font-semibold whitespace-nowrap" style={{ fontSize: 10, background: '#dcfce7', color: '#15803d' }}>
                             Meta oficial
@@ -263,6 +320,24 @@ export default function ListaEscenarios({ navigate, openEscenario }: Props) {
       </Card>
 
       <p className="text-xs" style={{ color: '#94a3b8' }}>{FOOTNOTE}</p>
+
+      <NuevoEscenarioModal
+        open={modalOpen}
+        existentes={FILAS.map((f) => ({
+          id: f.id,
+          codigo: f.codigo,
+          descripcion: f.descripcion,
+          version: f.version,
+          estado: f.estado,
+          intervenciones: f.resultado ? f.resultado.contribuciones.map((c) => c.name) : [...ESCENARIOS_PENDIENTES, ...creados].find((p) => p.id === f.id)?.intervenciones ?? [],
+        }))}
+        onClose={() => setModalOpen(false)}
+        onCreate={(e) => {
+          onCrear(e);
+          setRecienCreado(e);
+          setModalOpen(false);
+        }}
+      />
     </div>
   );
 }

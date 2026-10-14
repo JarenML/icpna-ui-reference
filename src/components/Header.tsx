@@ -9,6 +9,7 @@ const screenTitles: Record<Screen, string> = {
   granular: 'Reporte Granular',
   alertas: 'Reporte de Alertas',
   trazabilidad: 'Trazabilidad del Escenario',
+  powerbi: 'Reportes en Power BI',
 };
 
 interface Props {

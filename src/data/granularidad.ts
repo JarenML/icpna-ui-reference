@@ -131,3 +131,49 @@ export const desglosar = (granularidad: Granularidad, escenarios: EscenarioDetal
     escenarios: Object.fromEntries(escenarios.map((e, j) => [e.id, porEscenario[j][i]])),
   }));
 };
+
+// Hierarchy matrix (Reporte Granular): Modalidad → Curso → Horario, Base vs Meta ICPNA.
+// Children always add up exactly to their parent, and the top level adds up to Baseline / Meta.
+export interface NodoJerarquia {
+  id: string;
+  nombre: string;
+  base: number;
+  meta: number;
+  hijos?: NodoJerarquia[];
+}
+
+const MODALIDADES = MIEMBROS.modalidad;
+const CURSOS = MIEMBROS.curso;
+const HORARIOS = MIEMBROS.horario;
+
+// Deterministic variation of the growth split so sibling groups don't all grow at the same rate
+const variar = (shares: number[], semilla: number) => {
+  const v = shares.map((s, i) => s * (1 + 0.18 * Math.sin(semilla * 2.3 + i * 1.7)));
+  const total = v.reduce((a, b) => a + b, 0);
+  return v.map((x) => x / total);
+};
+
+const repartirNodo = (
+  base: number,
+  meta: number,
+  miembros: Miembro[],
+  semilla: number,
+  idPadre: string,
+  hijos?: (nodo: NodoJerarquia, i: number) => NodoJerarquia[],
+): NodoJerarquia[] => {
+  const bases = repartir(base, miembros.map((m) => m.base));
+  const lifts = repartir(meta - base, variar(miembros.map((m) => m.lift), semilla));
+  return miembros.map((m, i) => {
+    const nodo: NodoJerarquia = { id: `${idPadre}/${m.nombre}`, nombre: m.nombre, base: bases[i], meta: bases[i] + lifts[i] };
+    if (hijos) nodo.hijos = hijos(nodo, i);
+    return nodo;
+  });
+};
+
+export const JERARQUIA_MODALIDAD: NodoJerarquia[] = repartirNodo(
+  CORE.baseline, CORE.meta, MODALIDADES, 0, 'root',
+  (mod, mi) => repartirNodo(
+    mod.base, mod.meta, CURSOS, mi + 1, mod.id,
+    (cur, ci) => repartirNodo(cur.base, cur.meta, HORARIOS, (mi + 1) * 10 + ci, cur.id),
+  ),
+);

@@ -1,69 +1,15 @@
 import { useState } from 'react';
 import type { Screen } from '../App';
-import { FOOTNOTE } from '../data/constants';
+import { FOOTNOTE, ESCENARIOS_DETALLE, ESCENARIOS_PENDIENTES } from '../data/constants';
+import { ALERTAS, type NivelAlerta as Nivel } from '../data/alertas';
 
 interface Props {
   navigate: (s: Screen) => void;
 }
 
-type Nivel = 'Crítica' | 'Advertencia' | 'Error' | 'Informativa';
-
-interface AlertCard {
-  id: number;
-  nivel: Nivel;
-  titulo: string;
-  descripcion: string;
-  escenario: string;
-  sede?: string;
-  periodo?: string;
-  accion: string;
-  destino: Screen;
-}
-
-const alertCatalog: AlertCard[] = [
-  {
-    id: 1,
-    nivel: 'Advertencia',
-    titulo: 'Meta fuera de las bandas estadísticas',
-    descripcion: 'La Meta ICPNA (200,000) supera el límite superior del IC 95% (194,600) del Baseline en los periodos Ene–Mar 2027. La meta es exigente respecto al rango central esperado.',
-    escenario: 'Escenario 03 — Crecimiento Moderado',
-    sede: 'Todas',
-    periodo: '2027-01 a 2027-03',
-    accion: 'Ver bandas',
-    destino: 'resumen',
-  },
-  {
-    id: 2,
-    nivel: 'Crítica',
-    titulo: 'Brecha de capacidad — Miraflores 2027-03',
-    descripcion: 'El escenario requiere 424 clases en Miraflores para el periodo 2027-03, superando la capacidad disponible de 410 (+14 clases). Se necesita habilitar capacidad adicional o redistribuir demanda.',
-    escenario: 'Escenario 03 — Crecimiento Moderado',
-    sede: 'Miraflores',
-    periodo: '2027-03',
-    accion: 'Revisar horarios',
-    destino: 'granular',
-  },
-  {
-    id: 3,
-    nivel: 'Crítica',
-    titulo: 'Brecha de capacidad — San Miguel 2027-04',
-    descripcion: 'El escenario requiere 362 clases en San Miguel para el periodo 2027-04, superando la capacidad disponible de 355 (+7 clases). El nuevo horario de noche contribuye a esta restricción.',
-    escenario: 'Escenario 03 — Crecimiento Moderado',
-    sede: 'San Miguel',
-    periodo: '2027-04',
-    accion: 'Revisar horarios',
-    destino: 'granular',
-  },
-  {
-    id: 4,
-    nivel: 'Informativa',
-    titulo: 'Simulación procesada en segundo plano',
-    descripcion: 'El Escenario 03 (v4) fue procesado correctamente. Los resultados reflejan la aplicación de 4 intervenciones sobre el Baseline 2027.01.',
-    escenario: 'Escenario 03 — Crecimiento Moderado',
-    accion: 'Confirmar notificación',
-    destino: 'escenarios',
-  },
-];
+const ESCENARIOS = [...ESCENARIOS_DETALLE, ...ESCENARIOS_PENDIENTES].sort((a, b) => a.codigo.localeCompare(b.codigo));
+const SEDES = [...new Set(ALERTAS.flatMap((a) => a.sedes))].sort();
+const PERIODOS = [...new Set(ALERTAS.flatMap((a) => a.periodos))].sort();
 
 const catalogTable = [
   {
@@ -109,20 +55,24 @@ export default function ReporteAlertas({ navigate }: Props) {
   const [filNivel, setFilNivel] = useState('Todos');
   const [filEscenario, setFilEscenario] = useState('Todos');
   const [filSede, setFilSede] = useState('Todas');
-  const [dismissed, setDismissed] = useState<number[]>([]);
+  const [filPeriodo, setFilPeriodo] = useState('Todos');
+  const [dismissed, setDismissed] = useState<string[]>([]);
 
-  const filteredAlerts = alertCatalog.filter((a) => {
-    if (dismissed.includes(a.id)) return false;
+  const activas = ALERTAS.filter((a) => !dismissed.includes(a.id));
+  // Alerts without a specific scenario/sede/periodo apply to all of them
+  const filteredAlerts = activas.filter((a) => {
     if (filNivel !== 'Todos' && a.nivel !== filNivel) return false;
-    if (filSede !== 'Todas' && a.sede && a.sede !== filSede && a.sede !== 'Todas') return false;
+    if (filEscenario !== 'Todos' && a.escenarioId !== null && a.escenarioId !== filEscenario) return false;
+    if (filSede !== 'Todas' && a.sedes.length > 0 && !a.sedes.includes(filSede)) return false;
+    if (filPeriodo !== 'Todos' && a.periodos.length > 0 && !a.periodos.includes(filPeriodo)) return false;
     return true;
   });
 
   const counts = {
-    Crítica: alertCatalog.filter((a) => a.nivel === 'Crítica' && !dismissed.includes(a.id)).length,
-    Advertencia: alertCatalog.filter((a) => a.nivel === 'Advertencia' && !dismissed.includes(a.id)).length,
-    Error: alertCatalog.filter((a) => a.nivel === 'Error' && !dismissed.includes(a.id)).length,
-    Informativa: alertCatalog.filter((a) => a.nivel === 'Informativa' && !dismissed.includes(a.id)).length,
+    Crítica: activas.filter((a) => a.nivel === 'Crítica').length,
+    Advertencia: activas.filter((a) => a.nivel === 'Advertencia').length,
+    Error: activas.filter((a) => a.nivel === 'Error').length,
+    Informativa: activas.filter((a) => a.nivel === 'Informativa').length,
   };
 
   return (
@@ -141,10 +91,13 @@ export default function ReporteAlertas({ navigate }: Props) {
       >
         <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: '#64748b', fontSize: 10 }}>Filtros:</span>
         {[
-          { label: 'Nivel', value: filNivel, onChange: setFilNivel, opts: ['Todos', 'Crítica', 'Advertencia', 'Error', 'Informativa'] },
-          { label: 'Escenario', value: filEscenario, onChange: setFilEscenario, opts: ['Todos', 'Escenario 01', 'Escenario 02', 'Escenario 03', 'Escenario 04'] },
-          { label: 'Sede', value: filSede, onChange: setFilSede, opts: ['Todas', 'Miraflores', 'San Miguel', 'Surco', 'San Isidro'] },
-          { label: 'Periodo', value: 'Todos', onChange: () => {}, opts: ['Todos', '2027-01', '2027-02', '2027-03', '2027-04'] },
+          { label: 'Nivel', value: filNivel, onChange: setFilNivel, opts: ['Todos', 'Crítica', 'Advertencia', 'Error', 'Informativa'].map((o) => ({ value: o, label: o })) },
+          {
+            label: 'Escenario', value: filEscenario, onChange: setFilEscenario,
+            opts: [{ value: 'Todos', label: 'Todos' }, ...ESCENARIOS.map((e) => ({ value: e.id, label: `${e.codigo} — ${e.descripcion}` }))],
+          },
+          { label: 'Sede', value: filSede, onChange: setFilSede, opts: ['Todas', ...SEDES].map((o) => ({ value: o, label: o })) },
+          { label: 'Periodo', value: filPeriodo, onChange: setFilPeriodo, opts: ['Todos', ...PERIODOS].map((o) => ({ value: o, label: o })) },
         ].map((f) => (
           <div key={f.label} className="flex items-center gap-1.5">
             <span className="text-xs" style={{ color: '#64748b' }}>{f.label}:</span>
@@ -154,7 +107,7 @@ export default function ReporteAlertas({ navigate }: Props) {
               className="text-xs border rounded px-2 py-1"
               style={{ border: '1px solid var(--border)', borderRadius: 4, color: '#334155', background: '#fff' }}
             >
-              {f.opts.map((o) => <option key={o}>{o}</option>)}
+              {f.opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
         ))}
@@ -259,7 +212,7 @@ export default function ReporteAlertas({ navigate }: Props) {
               No hay alertas activas para los filtros seleccionados.
             </div>
             <div className="text-xs mt-1" style={{ color: '#94a3b8' }}>
-              El escenario no presenta alertas con los criterios aplicados.
+              Ajuste los filtros para ver otras alertas.
             </div>
           </div>
         ) : (
@@ -291,20 +244,30 @@ export default function ReporteAlertas({ navigate }: Props) {
                           </span>
                         </div>
                         <p className="text-xs mt-1.5" style={{ color: '#64748b', lineHeight: 1.6 }}>{alert.descripcion}</p>
-                        <div className="flex items-center gap-4 mt-2">
+                        <div className="grid gap-2 mt-2.5" style={{ gridTemplateColumns: `repeat(${Math.min(alert.datos.length, 4)}, minmax(0, 1fr))` }}>
+                          {alert.datos.map((d) => (
+                            <div
+                              key={d.label}
+                              className="px-2.5 py-1.5 rounded"
+                              style={{ background: d.destacado ? cfg.bg : '#f8fafc', border: `1px solid ${d.destacado ? cfg.border : '#f1f5f9'}` }}
+                            >
+                              <div style={{ color: '#94a3b8', fontSize: 10.5 }}>{d.label}</div>
+                              <div className="font-mono font-semibold text-xs mt-0.5" style={{ color: d.destacado ? cfg.color : '#0f172a' }}>{d.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        {alert.progreso !== undefined && (
+                          <div className="mt-2.5 rounded-full overflow-hidden" style={{ height: 5, background: '#e2e8f0' }}>
+                            <div className="h-full rounded-full" style={{ width: `${alert.progreso}%`, background: cfg.color }} />
+                          </div>
+                        )}
+                        <div className="flex items-center gap-4 mt-2.5">
                           <span className="text-xs" style={{ color: '#94a3b8' }}>
-                            Escenario: <strong style={{ color: '#64748b' }}>{alert.escenario}</strong>
+                            Escenario: <strong style={{ color: '#64748b' }}>{alert.escenarioLabel}</strong>
                           </span>
-                          {alert.sede && (
-                            <span className="text-xs" style={{ color: '#94a3b8' }}>
-                              Sede: <strong style={{ color: '#64748b' }}>{alert.sede}</strong>
-                            </span>
-                          )}
-                          {alert.periodo && (
-                            <span className="text-xs" style={{ color: '#94a3b8' }}>
-                              Periodo: <strong style={{ color: '#64748b' }}>{alert.periodo}</strong>
-                            </span>
-                          )}
+                          <span className="text-xs" style={{ color: '#94a3b8' }}>
+                            Tipo: <strong style={{ color: '#64748b' }}>{alert.tipo}</strong>
+                          </span>
                         </div>
                       </div>
                     </div>

@@ -8,6 +8,8 @@ import {
   GRANULAR_PERIODO, GRANULAR_TIPO, HEATMAP_CAPACIDAD, HISTORICO_PREV,
   FOOTNOTE, formatNum,
 } from '../data/constants';
+import { ALERTAS_PENDIENTES } from '../data/alertas';
+import { JERARQUIA_MODALIDAD, type NodoJerarquia } from '../data/granularidad';
 
 interface Props {
   navigate: (s: Screen) => void;
@@ -47,6 +49,18 @@ const heatTextColor = (v: number) => {
 
 const medidas = ['% Utilización', '% Ocupabilidad Aula Formada', '% Ocupabilidad Cap. Instalada', 'Cant. Aulas Utilización'];
 
+const NIVEL_JERARQUIA = ['Modalidad', 'Curso', 'Horario'];
+
+// Flattens the tree into visible rows according to which nodes are expanded
+const filasVisibles = (nodos: NodoJerarquia[], abiertos: Set<string>, nivel = 0): { nodo: NodoJerarquia; nivel: number }[] =>
+  nodos.flatMap((n) => [
+    { nodo: n, nivel },
+    ...(n.hijos && abiertos.has(n.id) ? filasVisibles(n.hijos, abiertos, nivel + 1) : []),
+  ]);
+
+const idsConHijos = (nodos: NodoJerarquia[]): string[] =>
+  nodos.flatMap((n) => (n.hijos ? [n.id, ...idsConHijos(n.hijos)] : []));
+
 const drillLevels = [
   'Nivel 1 — Resumen General',
   'Nivel 2 — Sede',
@@ -58,6 +72,14 @@ const drillLevels = [
 
 export default function ReporteGranular({ navigate }: Props) {
   const [drillLevel, setDrillLevel] = useState(0);
+  const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set([JERARQUIA_MODALIDAD[0].id]));
+  const toggleNodo = (id: string) =>
+    setAbiertos((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  const todosAbiertos = abiertos.size === idsConHijos(JERARQUIA_MODALIDAD).length;
   const [medida, setMedida] = useState(medidas[0]);
   const [histExpanded, setHistExpanded] = useState(true);
   const [filSede, setFilSede] = useState('Todas');
@@ -144,7 +166,7 @@ export default function ReporteGranular({ navigate }: Props) {
               className="w-full text-left text-xs py-1 px-2 rounded"
               style={{ color: '#dc2626' }}
             >
-              ⚠ Alertas Activas (3)
+              ⚠ Alertas Activas ({ALERTAS_PENDIENTES})
             </button>
           </div>
         </div>
@@ -162,7 +184,7 @@ export default function ReporteGranular({ navigate }: Props) {
             { label: 'Crec. Meta vs Real 2026', value: '+12.3%', color: '#16a34a' },
             { label: 'Brecha de Capacidad', value: '+21 clases', color: '#dc2626' },
             { label: 'Utilización (Meta)', value: '93.4%', color: '#d97706' },
-            { label: 'Alertas Activas', value: '3', color: '#dc2626', link: () => navigate('alertas') },
+            { label: 'Alertas Activas', value: String(ALERTAS_PENDIENTES), color: '#dc2626', link: () => navigate('alertas') },
           ].map((ind, i) => (
             <div key={i} className="flex justify-between items-center">
               <span className="text-xs" style={{ color: '#64748b' }}>{ind.label}</span>
@@ -358,6 +380,114 @@ export default function ReporteGranular({ navigate }: Props) {
                     </tr>
                   );
                 })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Hierarchy matrix (Modalidad → Curso → Horario) */}
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div className="flex items-start justify-between px-4 pt-4 pb-3" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div>
+              <div className="font-semibold text-sm" style={{ color: '#0f172a' }}>Matriz Comparativa por Jerarquía</div>
+              <div className="text-xs mt-0.5" style={{ color: '#64748b' }}>
+                Modalidad → Curso → Horario · Seleccione una fila para ver su siguiente nivel · Matriculados 2027
+              </div>
+            </div>
+            <button
+              onClick={() => setAbiertos(todosAbiertos ? new Set() : new Set(idsConHijos(JERARQUIA_MODALIDAD)))}
+              className="text-xs px-2.5 py-1 rounded font-medium transition-colors bg-white hover:bg-slate-50"
+              style={{ border: '1px solid var(--border)', color: '#334155' }}
+            >
+              {todosAbiertos ? 'Contraer todo' : 'Expandir todo'}
+            </button>
+          </div>
+          <div className="p-4">
+            <table className="w-full text-xs">
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                  {['Modalidad / Curso / Horario', 'Proyección Base', 'Meta ICPNA', 'Meta vs Base (Abs.)', 'Meta vs Base (%)'].map((h, i) => (
+                    <th
+                      key={h}
+                      className="pb-2 font-semibold"
+                      style={{ color: '#64748b', fontSize: 10, textAlign: i === 0 ? 'left' : 'right' }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filasVisibles(JERARQUIA_MODALIDAD, abiertos).map(({ nodo, nivel }) => {
+                  const p = varPct(nodo.base, nodo.meta);
+                  const abierto = abiertos.has(nodo.id);
+                  const expandible = !!nodo.hijos;
+                  return (
+                    <tr
+                      key={nodo.id}
+                      onClick={expandible ? () => toggleNodo(nodo.id) : undefined}
+                      className={expandible ? 'cursor-pointer hover:bg-slate-50' : ''}
+                      style={{
+                        borderBottom: '1px solid #f1f5f9',
+                        background: nivel === 0 ? '#f8fafc' : undefined,
+                      }}
+                    >
+                      <td className="py-2" style={{ paddingLeft: 4 + nivel * 22 }}>
+                        <span className="inline-flex items-center gap-1.5">
+                          {expandible ? (
+                            <svg
+                              width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5"
+                              strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                              className="transition-transform duration-150"
+                              style={{ transform: abierto ? 'rotate(90deg)' : undefined }}
+                            >
+                              <path d="M9 6l6 6-6 6" />
+                            </svg>
+                          ) : (
+                            <span style={{ width: 12 }} />
+                          )}
+                          <span
+                            style={{
+                              color: nivel === 2 ? '#475569' : '#0f172a',
+                              fontWeight: nivel === 0 ? 700 : nivel === 1 ? 600 : 500,
+                            }}
+                          >
+                            {nodo.nombre}
+                          </span>
+                          <span className="px-1 rounded" style={{ fontSize: 9.5, color: '#94a3b8', background: '#f1f5f9' }}>
+                            {NIVEL_JERARQUIA[nivel]}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="py-2 font-mono text-right" style={{ color: '#64748b' }}>{formatNum(nodo.base)}</td>
+                      <td className="py-2 font-mono text-right font-medium" style={{ color: '#1e40af' }}>{formatNum(nodo.meta)}</td>
+                      <td className="py-2 font-mono text-right font-semibold" style={{ color: varColor(p) }}>
+                        {nodo.meta - nodo.base >= 0 ? '+' : ''}{formatNum(nodo.meta - nodo.base)}
+                      </td>
+                      <td className="py-2 text-right">
+                        <span className="px-1.5 py-0.5 rounded text-xs" style={{ background: varBg(p), color: varColor(p) }}>{fmtPct(p)}</span>
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ background: '#eff6ff' }}>
+                  <td className="py-2 pl-1 font-semibold uppercase tracking-wide" style={{ color: '#1e40af', fontSize: 10.5 }}>Total</td>
+                  <td className="py-2 font-mono text-right font-bold" style={{ color: '#334155' }}>
+                    {formatNum(JERARQUIA_MODALIDAD.reduce((a, n) => a + n.base, 0))}
+                  </td>
+                  <td className="py-2 font-mono text-right font-bold" style={{ color: '#1e40af' }}>
+                    {formatNum(JERARQUIA_MODALIDAD.reduce((a, n) => a + n.meta, 0))}
+                  </td>
+                  <td className="py-2 font-mono text-right font-bold" style={{ color: '#1e40af' }}>
+                    +{formatNum(JERARQUIA_MODALIDAD.reduce((a, n) => a + n.meta - n.base, 0))}
+                  </td>
+                  <td className="py-2 text-right font-mono font-bold" style={{ color: '#1e40af' }}>
+                    {fmtPct(varPct(
+                      JERARQUIA_MODALIDAD.reduce((a, n) => a + n.base, 0),
+                      JERARQUIA_MODALIDAD.reduce((a, n) => a + n.meta, 0),
+                    ))}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>

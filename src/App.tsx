@@ -9,7 +9,9 @@ import ComparacionEscenarios from './screens/ComparacionEscenarios';
 import ReporteGranular from './screens/ReporteGranular';
 import ReporteAlertas from './screens/ReporteAlertas';
 import Trazabilidad from './screens/Trazabilidad';
+import PowerBI from './screens/PowerBI';
 import SimulationLoader from './components/SimulationLoader';
+import type { EscenarioPendiente } from './data/constants';
 
 export type Screen =
   | 'resumen'
@@ -19,12 +21,15 @@ export type Screen =
   | 'comparacion'
   | 'granular'
   | 'alertas'
-  | 'trazabilidad';
+  | 'trazabilidad'
+  | 'powerbi';
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>('resumen');
   const [simulating, setSimulating] = useState(false);
   const [escenarioId, setEscenarioId] = useState('esc03');
+  // Scenarios created in this session (Borrador, without results)
+  const [creados, setCreados] = useState<EscenarioPendiente[]>([]);
 
   const navigate = (s: Screen) => setScreen(s);
 
@@ -47,11 +52,16 @@ export default function App() {
       case 'resumen':
         return <ResumenEjecutivo navigate={navigate} />;
       case 'listaEscenarios':
-        return <ListaEscenarios navigate={navigate} openEscenario={openEscenario} />;
+        return <ListaEscenarios
+            navigate={navigate}
+            openEscenario={openEscenario}
+            creados={creados}
+            onCrear={(e) => setCreados((prev) => [...prev, e])}
+          />;
       case 'escenarios':
         return <ResultadoSimulacion navigate={navigate} escenarioId={escenarioId} />;
       case 'intervenciones':
-        return <ConstruccionEscenario navigate={navigate} onSimulate={runSimulation} />;
+        return <ConstruccionEscenario navigate={navigate} onSimulate={runSimulation} creados={creados} />;
       case 'comparacion':
         return <ComparacionEscenarios navigate={navigate} openEscenario={openEscenario} />;
       case 'granular':
@@ -60,6 +70,8 @@ export default function App() {
         return <ReporteAlertas navigate={navigate} />;
       case 'trazabilidad':
         return <Trazabilidad navigate={navigate} />;
+      case 'powerbi':
+        return <PowerBI />;
       default:
         return <ResumenEjecutivo navigate={navigate} />;
     }

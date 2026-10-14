@@ -1,3 +1,4 @@
+import { ALERTAS_PENDIENTES } from '../data/alertas';
 import type { Screen } from '../App';
 
 interface NavItem {
@@ -5,6 +6,7 @@ interface NavItem {
   label: string;
   icon: string;
   badge?: string;
+  grupo?: string;
 }
 
 const navItems: NavItem[] = [
@@ -13,8 +15,9 @@ const navItems: NavItem[] = [
   { id: 'intervenciones', label: 'Intervenciones', icon: '⊕' },
   { id: 'comparacion', label: 'Comparación', icon: '⊞' },
   { id: 'granular', label: 'Reporte Granular', icon: '⊟' },
-  { id: 'alertas', label: 'Alertas', icon: '⚠', badge: '3' },
+  { id: 'alertas', label: 'Alertas', icon: '⚠', badge: ALERTAS_PENDIENTES ? String(ALERTAS_PENDIENTES) : undefined },
   { id: 'trazabilidad', label: 'Trazabilidad', icon: '↺' },
+  { id: 'powerbi', label: 'Power BI', icon: '▥', grupo: 'Analítica' },
 ];
 
 interface Props {
@@ -72,8 +75,15 @@ export default function Sidebar({ current, navigate }: Props) {
         {navItems.map((item) => {
           const active = current === item.id || (item.id === 'listaEscenarios' && current === 'escenarios');
           return (
+            <div key={item.id}>
+            {item.grupo && (
+              <div className="px-2 pt-4 pb-2 mt-2" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                <span className="text-xs font-semibold uppercase tracking-widest" style={{ color: '#475569', fontSize: 10 }}>
+                  {item.grupo}
+                </span>
+              </div>
+            )}
             <button
-              key={item.id}
               onClick={() => navigate(item.id)}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded mb-0.5 text-left transition-colors duration-100"
               style={{
@@ -110,6 +120,7 @@ export default function Sidebar({ current, navigate }: Props) {
                 </span>
               )}
             </button>
+            </div>
           );
         })}
       </nav>
