@@ -17,15 +17,17 @@ const navItems: NavItem[] = [
   { id: 'granular', label: 'Reporte Granular', icon: '⊟' },
   { id: 'alertas', label: 'Alertas', icon: '⚠', badge: ALERTAS_PENDIENTES ? String(ALERTAS_PENDIENTES) : undefined },
   { id: 'trazabilidad', label: 'Trazabilidad', icon: '↺' },
+  { id: 'baseline', label: 'Baseline', icon: '▤' },
   { id: 'powerbi', label: 'Power BI', icon: '▥', grupo: 'Analítica' },
 ];
 
 interface Props {
   current: Screen;
   navigate: (s: Screen) => void;
+  baselineActivo: string;
 }
 
-export default function Sidebar({ current, navigate }: Props) {
+export default function Sidebar({ current, navigate, baselineActivo }: Props) {
   return (
     <aside
       className="flex flex-col flex-shrink-0"
@@ -129,7 +131,7 @@ export default function Sidebar({ current, navigate }: Props) {
       <div className="px-4 py-4" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
         <div className="text-xs" style={{ color: '#475569' }}>
           <div className="font-medium mb-0.5" style={{ color: '#64748b' }}>Baseline activo</div>
-          <div className="font-mono" style={{ color: '#94a3b8', fontSize: 11 }}>2027.01 — Solo lectura</div>
+          <div className="font-mono" style={{ color: '#94a3b8', fontSize: 11 }}>{baselineActivo} — Solo lectura</div>
         </div>
       </div>
     </aside>

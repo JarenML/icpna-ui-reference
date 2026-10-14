@@ -2,6 +2,7 @@ import type { Screen } from '../App';
 
 const screenTitles: Record<Screen, string> = {
   resumen: 'Resumen Ejecutivo',
+  baseline: 'Baseline',
   listaEscenarios: 'Escenarios',
   escenarios: 'Resultado de Simulación',
   intervenciones: 'Construcción de Escenario',

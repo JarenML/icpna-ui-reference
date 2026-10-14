@@ -1,8 +1,8 @@
 import { useState } from 'react';
 
 // Baseline = output of the projection model (structure taken from "muestra de proyeccion.csv").
-// Traceability columns (ID_CARGA, VERSION_BASELINE, FECHA_CARGA) are provisional.
-export const TABLA_BASELINE = 'planificacion.proyeccion_baseline';
+// Table names follow the Azure SQL output tables of the technical proposal; traceability and band columns are provisional.
+export const TABLA_BASELINE = 'baseline_version';
 
 const columnas = [
   { nombre: 'ID_CARGA', tipo: 'UNIQUEIDENTIFIER', traza: true, desc: 'ID de la corrida del modelo' },
@@ -16,6 +16,8 @@ const columnas = [
   { nombre: 'CODIGO_CURSO', tipo: 'VARCHAR(10)', pk: true, desc: 'Código del curso' },
   { nombre: 'CANT_ALUMNOS_MATRICULADOS', tipo: 'INT NULL', desc: 'Matrícula real (NULL en periodos futuros)' },
   { nombre: 'PRONOSTICO', tipo: 'INT', desc: 'Matrícula proyectada por el modelo' },
+  { nombre: 'LIMITE_INFERIOR', tipo: 'INT NULL', traza: true, desc: 'Banda inferior del pronóstico (si existe)' },
+  { nombre: 'LIMITE_SUPERIOR', tipo: 'INT NULL', traza: true, desc: 'Banda superior del pronóstico (si existe)' },
   { nombre: 'FLAG', tipo: 'VARCHAR(30)', desc: 'Método: cascada / iniciadores / sin_matriculas_recientes' },
   { nombre: 'DATA_SPLIT', tipo: 'VARCHAR(10)', desc: 'train / test / future' },
   { nombre: 'MES_DURACION', tipo: 'TINYINT', desc: 'Duración del curso en meses' },
@@ -37,13 +39,13 @@ const resumen = [
   { split: 'future', periodo: '2026-09', filas: 138, real: '—', pron: '1,027' },
 ];
 
-const consultaEjemplo = `-- Precisión del Baseline por sede (periodo de validación)
+const consultaEjemplo = (version: string) => `-- Precisión del Baseline por sede (periodo de validación)
 SELECT NOMBRE_SEDE,
        SUM(CANT_ALUMNOS_MATRICULADOS) AS real,
        SUM(PRONOSTICO)                AS pronostico,
        SUM(PRONOSTICO) - SUM(CANT_ALUMNOS_MATRICULADOS) AS desviacion
 FROM   ${TABLA_BASELINE}
-WHERE  VERSION_BASELINE = '2027.01'
+WHERE  VERSION_BASELINE = '${version}'
   AND  DATA_SPLIT       = 'test'
 GROUP BY NOMBRE_SEDE
 ORDER BY desviacion DESC;`;
@@ -52,12 +54,17 @@ const splitColor: Record<string, string> = { train: '#64748b', test: '#d97706', 
 
 const thStyle = { color: '#64748b', fontSize: 10, textTransform: 'uppercase' as const, letterSpacing: '0.05em' };
 
-export default function OutputSQLPanel() {
-  const [vista, setVista] = useState<'estructura' | 'datos' | 'consulta'>('estructura');
+interface Props {
+  version: string;
+  integrado: boolean;
+}
+
+export default function OutputSQLPanel({ version, integrado }: Props) {
+  const [vista, setVista] = useState<'datos' | 'estructura' | 'consulta'>('datos');
 
   return (
     <div
-      className="rounded-md mt-4"
+      className="rounded-md"
       style={{ background: '#fff', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
     >
       {/* Header */}
@@ -65,14 +72,23 @@ export default function OutputSQLPanel() {
         <div>
           <div className="flex items-center gap-2">
             <span className="font-semibold text-sm" style={{ color: '#0f172a' }}>
-              Baseline — Output de la Proyección Anual en SQL
+              Output de la Proyección Anual en SQL · <span className="font-mono">{version}</span>
             </span>
-            <span
-              className="text-xs font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: '#f0fdfa', color: '#0f766e', border: '1px solid #99f6e4' }}
-            >
-              ✓ Registrado
-            </span>
+            {integrado ? (
+              <span
+                className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: '#f0fdfa', color: '#0f766e', border: '1px solid #99f6e4' }}
+              >
+                ✓ Registrado
+              </span>
+            ) : (
+              <span
+                className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                style={{ background: '#fef2f2', color: '#b91c1c', border: '1px solid #fecaca' }}
+              >
+                Solo en staging
+              </span>
+            )}
             <span
               className="text-xs px-2 py-0.5 rounded-full"
               title="Estructura y nombres ilustrativos"
@@ -82,13 +98,13 @@ export default function OutputSQLPanel() {
             </span>
           </div>
           <div className="text-xs mt-1" style={{ color: '#64748b' }}>
-            El output del modelo de proyección se guarda en una tabla estructurada y es la fuente del Baseline: trazabilidad completa con el nuevo proyecto.
+            El output del modelo de proyección se guarda en una tabla versionada de Azure SQL y es la fuente del Baseline: trazabilidad completa con el nuevo proyecto.
           </div>
         </div>
         <div className="flex rounded overflow-hidden flex-shrink-0" style={{ border: '1px solid var(--border)' }}>
           {([
-            ['estructura', 'Estructura'],
             ['datos', 'Datos'],
+            ['estructura', 'Estructura'],
             ['consulta', 'Consulta'],
           ] as const).map(([v, label]) => (
             <button
@@ -110,8 +126,8 @@ export default function OutputSQLPanel() {
       <div className="flex items-center gap-2 flex-wrap px-4 py-3 text-xs" style={{ background: '#f8fafc', borderBottom: '1px solid var(--border)' }}>
         {[
           { label: 'Modelo de proyección', color: '#64748b' },
-          { label: TABLA_BASELINE, color: '#0f766e', mono: true },
-          { label: 'Baseline 2027.01', color: '#334155' },
+          { label: 'Verificaciones · ctl_baseline_validacion', color: '#d97706', mono: true },
+          { label: `${TABLA_BASELINE} · ${version}`, color: '#0f766e', mono: true },
           { label: 'Motor de Simulación / Nuevo proyecto / Power BI', color: '#1e40af' },
         ].map((n, i) => (
           <div key={n.label} className="flex items-center gap-2">
@@ -152,7 +168,7 @@ export default function OutputSQLPanel() {
             </table>
             <div className="flex items-center gap-2 mt-2 text-xs" style={{ color: '#94a3b8' }}>
               <span className="inline-block rounded" style={{ width: 10, height: 10, background: '#f0fdfa', border: '1px solid #99f6e4' }} />
-              Columnas de trazabilidad añadidas al output del modelo
+              Columnas de trazabilidad y bandas añadidas al output del modelo
             </div>
           </div>
 
@@ -173,6 +189,7 @@ export default function OutputSQLPanel() {
 
             <div className="text-xs space-y-1.5" style={{ color: '#64748b' }}>
               {[
+                'Solo se integra si pasa las verificaciones previas; si no, se bloquea y se notifica',
                 'Cada corrida del modelo se registra con su versión, sin sobrescribir las anteriores',
                 'Real vs pronóstico queda guardado por combinación para medir la precisión',
                 'El método de proyección (FLAG) explica el origen de cada cifra',
@@ -252,7 +269,7 @@ export default function OutputSQLPanel() {
             className="text-xs font-mono p-3 rounded overflow-x-auto"
             style={{ background: '#0f172a', color: '#e2e8f0', lineHeight: 1.6 }}
           >
-            {consultaEjemplo}
+            {consultaEjemplo(version)}
           </pre>
           <div className="text-xs mt-2" style={{ color: '#64748b' }}>
             Cualquier versión del Baseline puede auditarse o reconstruirse desde la tabla, sin volver a correr el modelo.
