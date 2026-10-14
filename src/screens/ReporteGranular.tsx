@@ -1,3 +1,4 @@
+import ExportPowerBI from '../components/ExportPowerBI';
 import { useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -10,6 +11,8 @@ import {
 } from '../data/constants';
 import { ALERTAS_PENDIENTES } from '../data/alertas';
 import { JERARQUIA_MODALIDAD, type NodoJerarquia } from '../data/granularidad';
+import { FORMATOS_AREA } from '../data/formatos';
+import FormatoFinanzasModal from '../components/FormatoFinanzasModal';
 
 interface Props {
   navigate: (s: Screen) => void;
@@ -85,6 +88,7 @@ export default function ReporteGranular({ navigate }: Props) {
   const [filSede, setFilSede] = useState('Todas');
   const [filModalidad, setFilModalidad] = useState('Todas');
   const [filTipo, setFilTipo] = useState('Todos');
+  const [previewFinanzas, setPreviewFinanzas] = useState(false);
 
   const filterSel = (label: string, value: string, onChange: (v: string) => void, opts: string[]) => (
     <div className="flex flex-col gap-0.5">
@@ -203,11 +207,14 @@ export default function ReporteGranular({ navigate }: Props) {
       {/* Main content */}
       <div className="space-y-4 min-w-0">
         {/* Page title */}
-        <div>
-          <h1 className="font-bold text-lg" style={{ color: '#0f172a' }}>Reporte Granular</h1>
-          <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
-            Profundice en el efecto de cada variable sobre sede, tipo de alumno, modalidad y otras dimensiones
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="font-bold text-lg" style={{ color: '#0f172a' }}>Reporte Granular</h1>
+            <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
+              Profundice en el efecto de cada variable sobre sede, tipo de alumno, modalidad y otras dimensiones
+            </p>
+          </div>
+          <ExportPowerBI reporte="Reporte Granular" tablas={['res_escenario_detalle', 'res_capacidad']} navigate={navigate} />
         </div>
 
         {/* Summary metric cards */}
@@ -629,6 +636,52 @@ export default function ReporteGranular({ navigate }: Props) {
           )}
         </div>
 
+        {/* Area formats (Power BI sheets) */}
+        <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid var(--border)' }}>
+            <div>
+              <div className="font-semibold text-sm" style={{ color: '#0f172a' }}>Formatos por área</div>
+              <div className="text-xs mt-0.5" style={{ color: '#64748b' }}>
+                Hojas de Power BI tipo Matriz que replican los formatos de GAGSI, Recursos Humanos y Finanzas
+              </div>
+            </div>
+            <span className="text-xs px-1.5 rounded font-medium" style={{ fontSize: 10, background: '#f5f3ff', color: '#7c3aed' }}>
+              Power BI
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-3 p-4">
+            {FORMATOS_AREA.map((f) => (
+              <div key={f.nombre} className="flex flex-col rounded p-3" style={{ border: '1px solid var(--border)' }}>
+                <div className="text-xs font-medium uppercase tracking-wide" style={{ color: '#94a3b8', fontSize: 10 }}>{f.area}</div>
+                <div className="text-sm font-semibold mt-0.5" style={{ color: '#0f172a' }}>{f.nombre}</div>
+                <p className="text-xs mt-1.5 flex-1" style={{ color: '#64748b', lineHeight: 1.5 }}>{f.descripcion}</p>
+                <div className="flex items-center gap-1.5 mt-2 text-xs" style={{ color: '#94a3b8' }}>
+                  <span className="font-semibold px-1 rounded" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', fontSize: 9 }}>XLSX</span>
+                  <span className="truncate" style={{ color: '#475569' }}>{f.fuente}</span>
+                </div>
+                <div className="flex gap-1.5 mt-3 pt-2.5" style={{ borderTop: '1px solid #f1f5f9' }}>
+                  {f.vistaPrevia && (
+                    <button
+                      onClick={() => setPreviewFinanzas(true)}
+                      className="text-xs px-2.5 py-1 rounded font-medium transition-colors hover:bg-slate-50"
+                      style={{ background: '#fff', color: '#334155', border: '1px solid var(--border)' }}
+                    >
+                      Vista previa
+                    </button>
+                  )}
+                  <button
+                    onClick={() => navigate('powerbi')}
+                    className="text-xs px-2.5 py-1 rounded font-medium transition-colors hover:bg-blue-100"
+                    style={{ background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}
+                  >
+                    Exportar en Power BI
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Legend block */}
         <div
           className="px-4 py-3 rounded text-xs space-y-1"
@@ -652,6 +705,8 @@ export default function ReporteGranular({ navigate }: Props) {
           <p className="text-xs text-center" style={{ color: '#94a3b8' }}>{FOOTNOTE}</p>
         </div>
       </div>
+
+      <FormatoFinanzasModal open={previewFinanzas} onClose={() => setPreviewFinanzas(false)} />
     </div>
   );
 }

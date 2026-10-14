@@ -11,6 +11,7 @@ import ReporteAlertas from './screens/ReporteAlertas';
 import Trazabilidad from './screens/Trazabilidad';
 import PowerBI from './screens/PowerBI';
 import Baseline from './screens/Baseline';
+import Login from './screens/Login';
 import SimulationLoader from './components/SimulationLoader';
 import type { EscenarioPendiente } from './data/constants';
 import { BASELINE_CANDIDATO, BASELINE_VERSIONES, type BaselineVersion } from './data/baseline';
@@ -27,7 +28,36 @@ export type Screen =
   | 'trazabilidad'
   | 'powerbi';
 
+// Simulated session: a token in localStorage keeps the user signed in across reloads
+const SESSION_KEY = 'icpna_session';
+
+const leerSesion = () => {
+  try {
+    return localStorage.getItem(SESSION_KEY) !== null;
+  } catch {
+    return false;
+  }
+};
+
+const guardarSesion = () => {
+  try {
+    const token = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now());
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ token, usuario: 'gerencia.comercial@icpna.edu.pe', emitido: new Date().toISOString() }));
+  } catch {
+    // Storage unavailable (private mode): the session lasts until reload
+  }
+};
+
+const borrarSesion = () => {
+  try {
+    localStorage.removeItem(SESSION_KEY);
+  } catch {
+    // ignore
+  }
+};
+
 export default function App() {
+  const [autenticado, setAutenticado] = useState(leerSesion);
   const [screen, setScreen] = useState<Screen>('resumen');
   const [simulating, setSimulating] = useState(false);
   const [escenarioId, setEscenarioId] = useState('esc03');
@@ -86,7 +116,7 @@ export default function App() {
       case 'resumen':
         return <ResumenEjecutivo navigate={navigate} />;
       case 'baseline':
-        return <Baseline versiones={baselines} hayNueva={hayNuevoBaseline} onIntegrar={integrarBaseline} onRechazar={rechazarBaseline} />;
+        return <Baseline navigate={navigate} versiones={baselines} hayNueva={hayNuevoBaseline} onIntegrar={integrarBaseline} onRechazar={rechazarBaseline} />;
       case 'listaEscenarios':
         return <ListaEscenarios
             navigate={navigate}
@@ -113,11 +143,15 @@ export default function App() {
     }
   };
 
+  if (!autenticado) {
+    return <Login onLogin={() => { guardarSesion(); setScreen('resumen'); setAutenticado(true); }} />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--background)' }}>
       <Sidebar current={screen} navigate={navigate} baselineActivo={baselineActivo} />
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-        <Header screen={screen} navigate={navigate} />
+        <Header screen={screen} navigate={navigate} onLogout={() => { borrarSesion(); setAutenticado(false); }} />
         <main className="flex-1 overflow-y-auto">
           {simulating ? <SimulationLoader /> : renderScreen()}
         </main>

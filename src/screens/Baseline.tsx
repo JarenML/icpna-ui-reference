@@ -1,3 +1,5 @@
+import type { Screen } from '../App';
+import ExportPowerBI from '../components/ExportPowerBI';
 import { useState } from 'react';
 import { FOOTNOTE, formatNum } from '../data/constants';
 import { CHECKS_BASELINE, type BaselineVersion, type EstadoBaseline } from '../data/baseline';
@@ -5,6 +7,7 @@ import OutputSQLPanel from '../components/OutputSQLPanel';
 import VerificarBaselineModal from '../components/VerificarBaselineModal';
 
 interface Props {
+  navigate: (s: Screen) => void;
   versiones: BaselineVersion[];
   hayNueva: boolean;
   onIntegrar: (atipico: boolean, revisor: string | null) => void;
@@ -36,7 +39,7 @@ const labelStyle = { color: '#94a3b8', fontSize: 10, textTransform: 'uppercase' 
 
 const card = { background: '#fff', border: '1px solid var(--border)', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' };
 
-export default function Baseline({ versiones, hayNueva, onIntegrar, onRechazar }: Props) {
+export default function Baseline({ navigate, versiones, hayNueva, onIntegrar, onRechazar }: Props) {
   const activo = versiones.find((v) => v.estado === 'Activo')!;
   const [seleccion, setSeleccion] = useState<string | null>(null);
   const [modal, setModal] = useState(false);
@@ -55,6 +58,8 @@ export default function Baseline({ versiones, hayNueva, onIntegrar, onRechazar }
             Proyección anual consumida como punto de partida — inalterable y versionada
           </div>
         </div>
+        <div className="flex gap-2">
+        <ExportPowerBI reporte="Tablero Ejecutivo" tablas={['baseline_version', 'ctl_baseline_validacion']} navigate={navigate} />
         <button
           onClick={() => setModal(true)}
           className="flex items-center gap-2 text-xs px-3 py-2 rounded font-medium"
@@ -63,6 +68,7 @@ export default function Baseline({ versiones, hayNueva, onIntegrar, onRechazar }
           <span style={{ fontSize: 13 }}>↻</span>
           Buscar nueva versión
         </button>
+        </div>
       </div>
 
       {/* Historical version banner */}

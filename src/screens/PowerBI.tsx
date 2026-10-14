@@ -1,4 +1,7 @@
+import { useState } from 'react';
 import { ESCENARIOS_DETALLE, ESCENARIOS_PENDIENTES, FOOTNOTE } from '../data/constants';
+import FormatoFinanzasModal from '../components/FormatoFinanzasModal';
+import { FORMATOS_AREA } from '../data/formatos';
 
 // Workspace / report links. Replace with the published report URLs of the ICPNA workspace.
 const POWER_BI_WORKSPACE_URL = 'https://app.powerbi.com/home';
@@ -9,7 +12,16 @@ const totalEscenarios = ESCENARIOS_DETALLE.length + ESCENARIOS_PENDIENTES.length
 const totalIntervenciones = ESCENARIOS_DETALLE.reduce((a, e) => a + e.contribuciones.length, 0)
   + ESCENARIOS_PENDIENTES.reduce((a, e) => a + e.intervenciones.length, 0);
 
-const REPORTES = [
+interface Reporte {
+  nombre: string;
+  grupo: string;
+  descripcion: string;
+  paginas: number;
+  fuente?: string;
+  vistaPrevia?: boolean;
+}
+
+const REPORTES: Reporte[] = [
   {
     nombre: 'Tablero Ejecutivo',
     grupo: 'Reporte Global',
@@ -46,6 +58,7 @@ const REPORTES = [
     descripcion: 'Alertas de factibilidad, capacidad, calidad de datos y supuestos con baja evidencia.',
     paginas: 1,
   },
+  ...FORMATOS_AREA.map((f) => ({ ...f, grupo: 'Formatos por área', paginas: 1 })),
 ];
 
 const TABLAS = [
@@ -61,6 +74,7 @@ const GRUPO_STYLE: Record<string, { color: string; bg: string }> = {
   'Reporte Global': { color: '#1e40af', bg: '#eff6ff' },
   'Reporte Granular': { color: '#0f766e', bg: '#f0fdfa' },
   'Reporte de Alertas': { color: '#b45309', bg: '#fffbeb' },
+  'Formatos por área': { color: '#7c3aed', bg: '#f5f3ff' },
 };
 
 const ExternalIcon = ({ size = 12 }: { size?: number }) => (
@@ -87,6 +101,8 @@ const Card = ({ children, style = {} }: { children: React.ReactNode; style?: Rea
 const abrir = () => window.open(POWER_BI_WORKSPACE_URL, '_blank', 'noopener,noreferrer');
 
 export default function PowerBI() {
+  const [previewFinanzas, setPreviewFinanzas] = useState(false);
+
   return (
     <div className="p-5 space-y-4 min-w-0">
       {/* Header */}
@@ -198,18 +214,35 @@ export default function PowerBI() {
                     </div>
                   </div>
                   <p className="text-xs mt-2 flex-1" style={{ color: '#64748b', lineHeight: 1.5 }}>{r.descripcion}</p>
+                  {r.fuente && (
+                    <div className="flex items-center gap-1.5 mt-2 text-xs" style={{ color: '#94a3b8' }}>
+                      <span className="font-semibold px-1 rounded" style={{ background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', fontSize: 9 }}>XLSX</span>
+                      Referencia: <span style={{ color: '#475569' }}>{r.fuente}</span> · Matriz
+                    </div>
+                  )}
                   <div className="flex items-center justify-between mt-3 pt-2.5" style={{ borderTop: '1px solid #f1f5f9' }}>
                     <span className="text-xs" style={{ color: '#94a3b8' }}>
                       {r.paginas} página{r.paginas > 1 ? 's' : ''} · Actualizado {ULTIMA_SINCRONIZACION.split(' ')[0]}
                     </span>
+                    <div className="flex gap-1.5">
+                    {r.vistaPrevia && (
+                      <button
+                        onClick={() => setPreviewFinanzas(true)}
+                        className="text-xs px-2.5 py-1 rounded font-medium transition-colors hover:bg-slate-50"
+                        style={{ background: '#fff', color: '#334155', border: '1px solid var(--border)' }}
+                      >
+                        Vista previa
+                      </button>
+                    )}
                     <button
                       onClick={abrir}
                       className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded font-medium transition-colors hover:bg-blue-100"
                       style={{ background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}
                     >
-                      Abrir en Power BI
+                      Exportar en Power BI
                       <ExternalIcon size={11} />
                     </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -248,6 +281,8 @@ export default function PowerBI() {
       </div>
 
       <p className="text-xs text-center pt-2 pb-4" style={{ color: '#94a3b8' }}>{FOOTNOTE}</p>
+
+      <FormatoFinanzasModal open={previewFinanzas} onClose={() => setPreviewFinanzas(false)} />
     </div>
   );
 }

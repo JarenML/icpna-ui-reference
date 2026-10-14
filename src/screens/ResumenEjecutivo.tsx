@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import ExportPowerBI from '../components/ExportPowerBI';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, Legend, Area, ComposedChart, ResponsiveContainer,
@@ -162,11 +163,18 @@ export default function ResumenEjecutivo({ navigate }: Props) {
   return (
     <div className="p-5 space-y-4 min-w-0">
       {/* Page title */}
-      <div>
-        <h1 className="font-bold text-lg" style={{ color: '#0f172a' }}>Planificación de Matrícula 2027</h1>
-        <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
-          Resumen consolidado de Baseline, Meta y escenario seleccionado
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-bold text-lg" style={{ color: '#0f172a' }}>Planificación de Matrícula 2027</h1>
+          <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
+            Resumen consolidado de Baseline, Meta y escenario seleccionado
+          </p>
+        </div>
+        <ExportPowerBI
+          reporte="Tablero Ejecutivo"
+          tablas={['baseline_version', 'res_escenario_detalle', 'res_aporte_intervencion']}
+          navigate={navigate}
+        />
       </div>
 
       {/* Global filters */}

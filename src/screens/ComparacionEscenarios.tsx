@@ -1,3 +1,4 @@
+import ExportPowerBI from '../components/ExportPowerBI';
 import { useState } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -88,7 +89,7 @@ interface Columna {
   highlight?: boolean;
 }
 
-export default function ComparacionEscenarios({ openEscenario }: Props) {
+export default function ComparacionEscenarios({ navigate, openEscenario }: Props) {
   const [criterio, setCriterio] = useState<Criterio>(criterioOptions[0]);
   const [comparacion, setComparacion] = useState<ComparacionConfig>(COMPARACION_INICIAL);
   const [modalOpen, setModalOpen] = useState(false);
@@ -182,6 +183,8 @@ export default function ComparacionEscenarios({ openEscenario }: Props) {
             Compare alternativas y evalúe cuáles se aproximan mejor a la Meta ICPNA
           </p>
         </div>
+        <div className="flex gap-2">
+        <ExportPowerBI reporte="Comparación de Escenarios" tablas={['res_comparacion', 'res_escenario_detalle']} navigate={navigate} />
         <button
           onClick={() => abrirModal({ nombre: '', escenarios: [], granularidad: 'general' })}
           className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-medium transition-colors bg-blue-800 hover:bg-blue-900"
@@ -192,6 +195,7 @@ export default function ComparacionEscenarios({ openEscenario }: Props) {
           </svg>
           Nueva comparación
         </button>
+        </div>
       </div>
 
       {/* Active comparison */}

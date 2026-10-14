@@ -1,3 +1,4 @@
+import ExportPowerBI from '../components/ExportPowerBI';
 import { useState } from 'react';
 import type { Screen } from '../App';
 import { FOOTNOTE, ESCENARIOS_DETALLE, ESCENARIOS_PENDIENTES } from '../data/constants';
@@ -77,11 +78,14 @@ export default function ReporteAlertas({ navigate }: Props) {
 
   return (
     <div className="p-5 space-y-4 min-w-0">
-      <div>
-        <h1 className="font-bold text-lg" style={{ color: '#0f172a' }}>Reporte de Alertas</h1>
-        <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
-          Consolidado de alertas y notificaciones generadas por la plataforma
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="font-bold text-lg" style={{ color: '#0f172a' }}>Reporte de Alertas</h1>
+          <p className="text-sm mt-0.5" style={{ color: '#64748b' }}>
+            Consolidado de alertas y notificaciones generadas por la plataforma
+          </p>
+        </div>
+        <ExportPowerBI reporte="Reporte de Alertas" tablas={['alerta']} navigate={navigate} />
       </div>
 
       {/* Filters */}

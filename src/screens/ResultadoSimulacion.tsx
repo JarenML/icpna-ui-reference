@@ -1,3 +1,4 @@
+import ExportPowerBI from '../components/ExportPowerBI';
 import {
   BarChart, Bar, XAxis, YAxis, Cell, Tooltip,
   ResponsiveContainer, ReferenceLine, LabelList,
@@ -126,6 +127,11 @@ export default function ResultadoSimulacion({ navigate, escenarioId }: Props) {
               {b.label}
             </button>
           ))}
+          <ExportPowerBI
+            reporte="Resultados por Escenario"
+            tablas={['res_escenario_detalle', 'res_aporte_intervencion', 'res_capacidad']}
+            navigate={navigate}
+          />
           <button
             className="text-xs px-3 py-1.5 rounded font-medium"
             style={{ background: '#1e40af', color: '#fff', border: 'none' }}
