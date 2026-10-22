@@ -74,7 +74,8 @@ export default function Sidebar({ current, navigate, baselineActivo }: Props) {
       </div>
 
       {/* Nav items */}
-      <nav className="flex-1 px-2">
+      {/* Scrolls on its own when the items don't fit (small screens or browser zoom) */}
+      <nav className="flex-1 min-h-0 overflow-y-auto px-2 pb-2">
         {navItems.map((item) => {
           const active = current === item.id || (item.id === 'listaEscenarios' && current === 'escenarios');
           return (
