@@ -12,6 +12,7 @@ const screenTitles: Record<Screen, string> = {
   alertas: 'Reporte de Alertas',
   trazabilidad: 'Trazabilidad del Escenario',
   powerbi: 'Reportes en Power BI',
+  motor: 'Configuración del Motor',
 };
 
 interface Props {

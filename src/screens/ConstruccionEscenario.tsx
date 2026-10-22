@@ -27,31 +27,40 @@ interface Intervention {
   referencia?: { sedeNueva: string; sedeReferencia: string; proyeccion: number };
 }
 
-// Historical weight of each level in the existing sedes (mock data), used to copy the pattern to a new sede
-const PATRONES_SEDE: Record<string, { nivel: string; peso: number }[]> = {
-  Surco: [
-    { nivel: 'Básico', peso: 40 }, { nivel: 'Intermedio', peso: 25 },
-    { nivel: 'Avanzado', peso: 15 }, { nivel: 'Kids & Teens', peso: 20 },
-  ],
-  'San Miguel': [
-    { nivel: 'Básico', peso: 45 }, { nivel: 'Intermedio', peso: 22 },
-    { nivel: 'Avanzado', peso: 10 }, { nivel: 'Kids & Teens', peso: 23 },
-  ],
-  Miraflores: [
-    { nivel: 'Básico', peso: 30 }, { nivel: 'Intermedio', peso: 28 },
-    { nivel: 'Avanzado', peso: 27 }, { nivel: 'Kids & Teens', peso: 15 },
-  ],
-  'San Isidro': [
-    { nivel: 'Básico', peso: 28 }, { nivel: 'Intermedio', peso: 30 },
-    { nivel: 'Avanzado', peso: 30 }, { nivel: 'Kids & Teens', peso: 12 },
-  ],
-  'La Molina': [
-    { nivel: 'Básico', peso: 35 }, { nivel: 'Intermedio', peso: 22 },
-    { nivel: 'Avanzado', peso: 13 }, { nivel: 'Kids & Teens', peso: 30 },
-  ],
+// Offer of a sede (Modalidad → Curso → Horario). Comercial/GOP delivers the new sede's initial enrolment at this level
+const OFERTA_SEDE = [
+  { modalidad: 'Presencial', curso: 'Básico', horario: 'Mañana' },
+  { modalidad: 'Presencial', curso: 'Básico', horario: 'Noche' },
+  { modalidad: 'Presencial', curso: 'Intermedio', horario: 'Tarde' },
+  { modalidad: 'Presencial', curso: 'Intermedio', horario: 'Noche' },
+  { modalidad: 'Presencial', curso: 'Avanzado', horario: 'Noche' },
+  { modalidad: 'Presencial', curso: 'Kids & Teens', horario: 'Tarde' },
+  { modalidad: 'Presencial', curso: 'Kids & Teens', horario: 'Sábado' },
+  { modalidad: 'Virtual', curso: 'Básico', horario: 'Noche' },
+  { modalidad: 'Virtual', curso: 'Intermedio', horario: 'Noche' },
+  { modalidad: 'Virtual', curso: 'Avanzado', horario: 'Noche' },
+];
+
+// Historical weight (%) of each OFERTA_SEDE row in the existing sedes (mock data), used to preload the new sede
+const PATRONES_SEDE: Record<string, number[]> = {
+  Surco: [12, 16, 12, 6, 9, 10, 10, 12, 7, 6],
+  'San Miguel': [14, 17, 10, 5, 6, 12, 11, 14, 7, 4],
+  Miraflores: [8, 10, 10, 8, 15, 8, 7, 12, 10, 12],
+  'San Isidro': [7, 9, 11, 9, 16, 6, 6, 12, 10, 14],
+  'La Molina': [10, 13, 8, 6, 7, 16, 14, 12, 8, 6],
 };
 
 // Distributes the total with the reference weights; the last row absorbs rounding so it adds up to the total
+const distribuir = (total: number, sede: string) => {
+  const pesos = PATRONES_SEDE[sede];
+  let asignado = 0;
+  return pesos.map((peso, i) => {
+    const matriculas = i === pesos.length - 1 ? total - asignado : Math.round((total * peso) / 100);
+    asignado += matriculas;
+    return matriculas;
+  });
+};
+
 interface MesInputProps {
   placeholder: string;
   value: string;
@@ -95,16 +104,6 @@ function MesInput({ placeholder, value, min, max, onChange, className, style }: 
     />
   );
 }
-
-const distribuir = (total: number, sede: string) => {
-  const patron = PATRONES_SEDE[sede];
-  let asignado = 0;
-  return patron.map((p, i) => {
-    const matriculas = i === patron.length - 1 ? total - asignado : Math.round((total * p.peso) / 100);
-    asignado += matriculas;
-    return { ...p, matriculas };
-  });
-};
 
 const clasificacionBadge = (c: Intervention['clasificacion']) => {
   const map = {
@@ -176,20 +175,16 @@ const initialInterventions: Intervention[] = [
 
 const PASOS = ['Información e identificación', 'Impacto y sustento', 'Vigencia y alcance'];
 
-const TIPOS_INTERVENCION = [
-  'Retención', 'Crecimiento de matrícula', 'Campaña comercial',
-  'Precio / descuento', 'Nueva sede', 'Nuevo curso', 'Nuevo horario',
-  'Alumno promedio por clase',
-];
-
 interface Props {
   navigate: (s: Screen) => void;
   onSimulate: () => void;
   creados: EscenarioPendiente[];
   baseline: BaselineVersion;
+  // Active intervention types (Configuración del motor)
+  tiposIntervencion: string[];
 }
 
-export default function ConstruccionEscenario({ navigate, onSimulate, creados, baseline }: Props) {
+export default function ConstruccionEscenario({ navigate, onSimulate, creados, baseline, tiposIntervencion }: Props) {
   // An intervention can only apply within the periods covered by the scenario's baseline ("2027-01 a 2027-12")
   const [periodoMin, periodoMax] = baseline.periodos.split(' a ');
   const ESCENARIOS = [...ESCENARIOS_BASE, ...creados].sort((a, b) => a.codigo.localeCompare(b.codigo));
@@ -198,14 +193,16 @@ export default function ConstruccionEscenario({ navigate, onSimulate, creados, b
   const [panelOpen, setPanelOpen] = useState(false);
   const [paso, setPaso] = useState(0);
   const formInicial = {
-    nombre: '', periodoDesde: '', periodoHasta: '', granularidad: {} as Record<string, string>, tipo: TIPOS_INTERVENCION[0],
+    nombre: '', periodoDesde: '', periodoHasta: '', granularidad: {} as Record<string, string>, tipo: tiposIntervencion[0],
     impacto: '', justificacion: '', escenario: 'esc03',
     clasificacion: 'Supuesto gerencial' as Intervention['clasificacion'],
-    sedeNueva: 'Chorrillos', proyeccion: '300', sedeReferencia: 'Surco',
+    // Initial enrolment of the new sede per OFERTA_SEDE row, preloaded with the reference pattern and editable
+    sedeNueva: 'Chorrillos', totalPrecarga: '300', sedeReferencia: 'Surco', detalle: distribuir(300, 'Surco'),
   };
   const [form, setForm] = useState(formInicial);
   const esNuevaSede = form.tipo === 'Nueva sede';
-  const proyeccion = Math.max(0, parseInt(form.proyeccion, 10) || 0);
+  const totalPrecarga = Math.max(0, parseInt(form.totalPrecarga, 10) || 0);
+  const proyeccion = form.detalle.reduce((a, b) => a + b, 0);
 
   const handleAddIntervention = () => {
     // The name is on the first step: go back there so the user sees what is missing
@@ -380,8 +377,8 @@ export default function ConstruccionEscenario({ navigate, onSimulate, creados, b
                   >
                     <span>⇢</span>
                     <span>
-                      <strong>{inv.referencia.sedeNueva}</strong> copia el patrón de <strong>{inv.referencia.sedeReferencia}</strong>:{' '}
-                      {inv.referencia.proyeccion.toLocaleString('en-US')} matrículas iniciales (Comercial) repartidas con los pesos históricos de la sede de referencia.
+                      <strong>{inv.referencia.sedeNueva}</strong>: {inv.referencia.proyeccion.toLocaleString('en-US')} matrículas iniciales de alumnos nuevos,{' '}
+                      entregadas por Comercial / GOP por modalidad, curso y horario. Sede de referencia: <strong>{inv.referencia.sedeReferencia}</strong>.
                     </span>
                   </div>
                 )}
@@ -570,7 +567,7 @@ export default function ConstruccionEscenario({ navigate, onSimulate, creados, b
                           setForm((prev) => ({ ...prev, tipo, ...(tipo === 'Nueva sede' && { clasificacion: 'Estimación estadística' as const }) }));
                         }}
                       >
-                        {TIPOS_INTERVENCION.map((t) => <option key={t}>{t}</option>)}
+                        {tiposIntervencion.map((t) => <option key={t}>{t}</option>)}
                       </select>
                     </div>
 
@@ -604,11 +601,20 @@ export default function ConstruccionEscenario({ navigate, onSimulate, creados, b
 
                     {esNuevaSede && (
                       <div className="col-span-3 rounded-md p-3 space-y-3" style={{ background: '#f8fafc', border: '1px solid #bfdbfe' }}>
-                        <div>
-                          <div className="text-xs font-semibold" style={{ color: '#1e40af' }}>Sede de referencia</div>
-                          <div className="text-xs mt-0.5" style={{ color: '#64748b' }}>
-                            La sede nueva no tiene historia propia: el total lo define Comercial y se reparte como en una sede parecida.
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-xs font-semibold" style={{ color: '#1e40af' }}>Sede nueva</div>
+                            <div className="text-xs mt-0.5" style={{ color: '#64748b' }}>
+                              Comercial / GOP entrega la proyección inicial del periodo de apertura por modalidad, curso y horario.
+                            </div>
                           </div>
+                          <span
+                            className="text-xs font-medium px-2 py-0.5 rounded whitespace-nowrap"
+                            style={{ background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}
+                            title="La sede aún no tiene alumnos regulares ni reingresantes"
+                          >
+                            Tipo de alumno: Nuevo · 100%
+                          </span>
                         </div>
 
                         <div className="grid grid-cols-2 gap-2">
@@ -623,61 +629,99 @@ export default function ConstruccionEscenario({ navigate, onSimulate, creados, b
                             />
                           </div>
                           <div>
+                            <label className={labelCls} style={{ color: '#334155' }}>Periodo de apertura</label>
+                            <input
+                              type="text"
+                              readOnly
+                              className={inputCls}
+                              style={{ ...inputStyle, background: '#f1f5f9', color: '#64748b', cursor: 'not-allowed' }}
+                              title="Se toma del inicio del periodo de aplicación (paso 3)"
+                              value={form.periodoDesde || 'Se define en el paso 3 (inicio del periodo)'}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-[1fr_140px_auto] gap-2 items-end">
+                          <div>
                             <label className={labelCls} style={{ color: '#334155' }}>
-                              Proyección inicial <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Comercial)</span>
+                              Sede de referencia <span style={{ color: '#94a3b8', fontWeight: 400 }}>(definida por GOP)</span>
                             </label>
+                            <select
+                              className={inputCls}
+                              style={inputStyle}
+                              value={form.sedeReferencia}
+                              onChange={(e) => setForm((prev) => ({ ...prev, sedeReferencia: e.target.value }))}
+                            >
+                              {Object.keys(PATRONES_SEDE).map((s) => <option key={s}>{s}</option>)}
+                            </select>
+                          </div>
+                          <div>
+                            <label className={labelCls} style={{ color: '#334155' }}>Total a precargar</label>
                             <input
                               type="number"
                               min={0}
                               className={inputCls}
                               style={inputStyle}
-                              value={form.proyeccion}
-                              onChange={(e) => setForm((prev) => ({ ...prev, proyeccion: e.target.value }))}
+                              value={form.totalPrecarga}
+                              onChange={(e) => setForm((prev) => ({ ...prev, totalPrecarga: e.target.value }))}
                             />
                           </div>
-                        </div>
-
-                        <div>
-                          <label className={labelCls} style={{ color: '#334155' }}>
-                            Copiar patrón de <span style={{ color: '#94a3b8', fontWeight: 400 }}>(definida por GOP)</span>
-                          </label>
-                          <select
-                            className={inputCls}
-                            style={inputStyle}
-                            value={form.sedeReferencia}
-                            onChange={(e) => setForm((prev) => ({ ...prev, sedeReferencia: e.target.value }))}
+                          <button
+                            onClick={() => setForm((prev) => ({ ...prev, detalle: distribuir(totalPrecarga, prev.sedeReferencia) }))}
+                            className="text-sm font-medium px-3 rounded transition-colors hover:bg-blue-100"
+                            style={{ height: 34, background: '#eff6ff', color: '#1e40af', border: '1px solid #bfdbfe' }}
                           >
-                            {Object.keys(PATRONES_SEDE).map((s) => <option key={s}>{s}</option>)}
-                          </select>
+                            Precargar con el patrón
+                          </button>
                         </div>
 
                         <div>
                           <div className="text-xs font-medium mb-1" style={{ color: '#334155' }}>
-                            Vista previa — cómo quedaría {form.sedeNueva || 'la sede nueva'}
+                            Proyección inicial de {form.sedeNueva || 'la sede nueva'} — editable por Comercial / GOP
                           </div>
                           <table className="w-full text-xs" style={{ background: '#fff', border: '1px solid var(--border)' }}>
                             <thead>
                               <tr style={{ background: '#f1f5f9', color: '#64748b' }}>
-                                <th className="text-left font-medium px-2 py-1">Nivel</th>
+                                <th className="text-left font-medium px-2 py-1">Modalidad</th>
+                                <th className="text-left font-medium px-2 py-1">Curso</th>
+                                <th className="text-left font-medium px-2 py-1">Horario</th>
                                 <th className="text-right font-medium px-2 py-1">Peso en {form.sedeReferencia}</th>
-                                <th className="text-right font-medium px-2 py-1">Matrículas</th>
+                                <th className="text-right font-medium px-2 py-1" style={{ width: 110 }}>Matrículas</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {distribuir(proyeccion, form.sedeReferencia).map((r) => (
-                                <tr key={r.nivel} style={{ borderTop: '1px solid #f1f5f9', color: '#334155' }}>
-                                  <td className="px-2 py-1">{r.nivel}</td>
-                                  <td className="px-2 py-1 text-right font-mono">{r.peso}%</td>
-                                  <td className="px-2 py-1 text-right font-mono">{r.matriculas.toLocaleString('en-US')}</td>
+                              {OFERTA_SEDE.map((o, i) => (
+                                <tr key={o.modalidad + o.curso + o.horario} style={{ borderTop: '1px solid #f1f5f9', color: '#334155' }}>
+                                  <td className="px-2 py-1">{o.modalidad}</td>
+                                  <td className="px-2 py-1">{o.curso}</td>
+                                  <td className="px-2 py-1">{o.horario}</td>
+                                  <td className="px-2 py-1 text-right font-mono" style={{ color: '#94a3b8' }}>{PATRONES_SEDE[form.sedeReferencia][i]}%</td>
+                                  <td className="px-2 py-0.5 text-right">
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      aria-label={'Matrículas ' + o.modalidad + ' ' + o.curso + ' ' + o.horario}
+                                      className="w-full text-right font-mono text-xs px-1.5 py-0.5 rounded"
+                                      style={{ border: '1px solid var(--border)', color: '#0f172a' }}
+                                      value={form.detalle[i]}
+                                      onChange={(e) => {
+                                        const valor = Math.max(0, parseInt(e.target.value, 10) || 0);
+                                        setForm((prev) => ({ ...prev, detalle: prev.detalle.map((v, j) => (j === i ? valor : v)) }));
+                                      }}
+                                    />
+                                  </td>
                                 </tr>
                               ))}
                               <tr className="font-semibold" style={{ borderTop: '1px solid var(--border)', color: '#0f172a' }}>
-                                <td className="px-2 py-1">Total</td>
+                                <td className="px-2 py-1" colSpan={3}>Total alumnos nuevos</td>
                                 <td className="px-2 py-1 text-right font-mono">100%</td>
                                 <td className="px-2 py-1 text-right font-mono">{proyeccion.toLocaleString('en-US')}</td>
                               </tr>
                             </tbody>
                           </table>
+                          <div className="text-xs mt-1.5" style={{ color: '#64748b' }}>
+                            La sede de referencia también se usa para proyectar los periodos siguientes (continuidad y maduración α).
+                          </div>
                         </div>
                       </div>
                     )}

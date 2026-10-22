@@ -11,11 +11,13 @@ import ReporteAlertas from './screens/ReporteAlertas';
 import Trazabilidad from './screens/Trazabilidad';
 import PowerBI from './screens/PowerBI';
 import Baseline from './screens/Baseline';
+import ConfiguracionMotor from './screens/ConfiguracionMotor';
 import Login from './screens/Login';
 import { USUARIO_ACTUAL } from './data/sesion';
 import SimulationLoader from './components/SimulationLoader';
 import type { EscenarioPendiente } from './data/constants';
 import { BASELINE_CANDIDATO, BASELINE_VERSIONES, type BaselineVersion } from './data/baseline';
+import { TIPOS_INTERVENCION, type TipoIntervencion } from './data/tiposIntervencion';
 
 export type Screen =
   | 'resumen'
@@ -27,7 +29,8 @@ export type Screen =
   | 'granular'
   | 'alertas'
   | 'trazabilidad'
-  | 'powerbi';
+  | 'powerbi'
+  | 'motor';
 
 // Simulated session: a token in localStorage keeps the user signed in across reloads
 const SESSION_KEY = 'icpna_session';
@@ -68,6 +71,9 @@ export default function App() {
   const [baselines, setBaselines] = useState<BaselineVersion[]>(BASELINE_VERSIONES);
   const [hayNuevoBaseline, setHayNuevoBaseline] = useState(true);
   const baselineActivo = baselines.find((b) => b.estado === 'Activo')!.codigo;
+  // Intervention types and their engine scripts; only active ones can be used in scenarios
+  const [tiposIntervencion, setTiposIntervencion] = useState<TipoIntervencion[]>(TIPOS_INTERVENCION);
+  const tiposActivos = tiposIntervencion.filter((t) => t.estado === 'Activo').map((t) => t.nombre);
 
   const candidatoComo = (estado: BaselineVersion['estado'], atipico = false, revisor: string | null = null): BaselineVersion => {
     const c = BASELINE_CANDIDATO;
@@ -128,7 +134,7 @@ export default function App() {
       case 'escenarios':
         return <ResultadoSimulacion navigate={navigate} escenarioId={escenarioId} />;
       case 'intervenciones':
-        return <ConstruccionEscenario navigate={navigate} onSimulate={runSimulation} creados={creados} baseline={baselines.find((b) => b.estado === 'Activo')!} />;
+        return <ConstruccionEscenario navigate={navigate} onSimulate={runSimulation} creados={creados} baseline={baselines.find((b) => b.estado === 'Activo')!} tiposIntervencion={tiposActivos} />;
       case 'comparacion':
         return <ComparacionEscenarios navigate={navigate} openEscenario={openEscenario} />;
       case 'granular':
@@ -139,6 +145,12 @@ export default function App() {
         return <Trazabilidad navigate={navigate} />;
       case 'powerbi':
         return <PowerBI />;
+      case 'motor':
+        return <ConfiguracionMotor
+            tipos={tiposIntervencion}
+            onCrear={(t) => setTiposIntervencion((prev) => [...prev, t])}
+            onActivar={(clave) => setTiposIntervencion((prev) => prev.map((t) => (t.clave === clave ? { ...t, estado: 'Activo' } : t)))}
+          />;
       default:
         return <ResumenEjecutivo navigate={navigate} />;
     }

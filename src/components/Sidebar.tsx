@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { id: 'trazabilidad', label: 'Trazabilidad', icon: '↺' },
   { id: 'baseline', label: 'Baseline', icon: '▤' },
   { id: 'powerbi', label: 'Power BI', icon: '▥', grupo: 'Analítica' },
+  { id: 'motor', label: 'Configuración del motor', icon: '⚙', grupo: 'Configuración' },
 ];
 
 interface Props {
