@@ -86,6 +86,17 @@ const TIPOS_ALUMNO = [
   { nombre: 'Nuevo', base: 0.2, otros: 0.55 },
 ];
 
+// Dimensions an intervention can be scoped to, in planning-hierarchy order (the period is captured separately).
+// Leaving a dimension empty means the intervention applies to all of its members.
+export const DIMENSIONES_ALCANCE: { id: Exclude<Granularidad, 'general' | 'periodo'>; label: string; opciones: string[] }[] = [
+  { id: 'modalidad', label: 'Modalidad', opciones: MIEMBROS.modalidad.map((m) => m.nombre) },
+  { id: 'programa', label: 'Programa', opciones: MIEMBROS.programa.map((m) => m.nombre) },
+  { id: 'sede', label: 'Sede', opciones: MIEMBROS.sede.map((m) => m.nombre) },
+  { id: 'tipoAlumno', label: 'Tipo de Alumno', opciones: TIPOS_ALUMNO.map((t) => t.nombre) },
+  { id: 'curso', label: 'Curso', opciones: MIEMBROS.curso.map((m) => m.nombre) },
+  { id: 'horario', label: 'Horario', opciones: MIEMBROS.horario.map((m) => m.nombre) },
+];
+
 // Splits total into parts by share; the last part absorbs rounding so parts add up to total
 const repartir = (total: number, shares: number[]) => {
   const parts = shares.map((s) => Math.round(total * s));
@@ -142,7 +153,10 @@ export interface NodoJerarquia {
   hijos?: NodoJerarquia[];
 }
 
-const MODALIDADES = MIEMBROS.modalidad;
+// The hierarchy matrix only shows Presencial and Virtual: their base shares are rescaled so they still add up to 100%
+const MODALIDADES_JERARQUIA = MIEMBROS.modalidad.filter((m) => m.nombre !== 'Semipresencial');
+const sumaBase = MODALIDADES_JERARQUIA.reduce((a, m) => a + m.base, 0);
+const MODALIDADES = MODALIDADES_JERARQUIA.map((m) => ({ ...m, base: m.base / sumaBase }));
 const CURSOS = MIEMBROS.curso;
 const HORARIOS = MIEMBROS.horario;
 

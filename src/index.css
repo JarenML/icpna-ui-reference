@@ -117,3 +117,23 @@ body {
 .recharts-tooltip-wrapper {
   outline: none;
 }
+
+/* Tailwind v4's preflight resets buttons to the default cursor: restore the pointer on interactive controls */
+@layer base {
+  button:not(:disabled),
+  [role='button'],
+  select:not(:disabled),
+  summary,
+  input[type='checkbox']:not(:disabled),
+  input[type='radio']:not(:disabled),
+  input[type='month']:not(:disabled),
+  input[type='date']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  select:disabled,
+  input:disabled {
+    cursor: not-allowed;
+  }
+}

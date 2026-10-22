@@ -12,6 +12,7 @@ import Trazabilidad from './screens/Trazabilidad';
 import PowerBI from './screens/PowerBI';
 import Baseline from './screens/Baseline';
 import Login from './screens/Login';
+import { USUARIO_ACTUAL } from './data/sesion';
 import SimulationLoader from './components/SimulationLoader';
 import type { EscenarioPendiente } from './data/constants';
 import { BASELINE_CANDIDATO, BASELINE_VERSIONES, type BaselineVersion } from './data/baseline';
@@ -42,7 +43,7 @@ const leerSesion = () => {
 const guardarSesion = () => {
   try {
     const token = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now());
-    localStorage.setItem(SESSION_KEY, JSON.stringify({ token, usuario: 'gerencia.comercial@icpna.edu.pe', emitido: new Date().toISOString() }));
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ token, usuario: USUARIO_ACTUAL.correo, emitido: new Date().toISOString() }));
   } catch {
     // Storage unavailable (private mode): the session lasts until reload
   }
@@ -127,7 +128,7 @@ export default function App() {
       case 'escenarios':
         return <ResultadoSimulacion navigate={navigate} escenarioId={escenarioId} />;
       case 'intervenciones':
-        return <ConstruccionEscenario navigate={navigate} onSimulate={runSimulation} creados={creados} />;
+        return <ConstruccionEscenario navigate={navigate} onSimulate={runSimulation} creados={creados} baseline={baselines.find((b) => b.estado === 'Activo')!} />;
       case 'comparacion':
         return <ComparacionEscenarios navigate={navigate} openEscenario={openEscenario} />;
       case 'granular':

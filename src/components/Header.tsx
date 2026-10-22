@@ -1,4 +1,5 @@
 import type { Screen } from '../App';
+import { USUARIO_ACTUAL } from '../data/sesion';
 
 const screenTitles: Record<Screen, string> = {
   resumen: 'Resumen Ejecutivo',
@@ -87,11 +88,11 @@ export default function Header({ screen, navigate, onLogout }: Props) {
             className="flex items-center justify-center font-semibold text-xs rounded-full"
             style={{ width: 30, height: 30, background: '#1e40af', color: '#fff' }}
           >
-            GC
+            {USUARIO_ACTUAL.iniciales}
           </div>
           <div className="hidden md:block">
-            <div className="text-xs font-medium" style={{ color: '#334155' }}>Gerencia Comercial</div>
-            <div className="text-xs" style={{ color: '#94a3b8' }}>ICPNA Planificación</div>
+            <div className="text-xs font-medium" style={{ color: '#334155' }}>{USUARIO_ACTUAL.nombre}</div>
+            <div className="text-xs" style={{ color: '#94a3b8' }}>{USUARIO_ACTUAL.area}</div>
           </div>
         </div>
 
