@@ -184,7 +184,7 @@ export default function ComparacionEscenarios({ navigate, openEscenario }: Props
           </p>
         </div>
         <div className="flex gap-2">
-        <ExportPowerBI reporte="Comparación de Escenarios" tablas={['res_comparacion', 'res_escenario_detalle']} navigate={navigate} />
+        <ExportPowerBI reporte="Tablero Ejecutivo" tablas={['res_comparacion', 'res_escenario_detalle']} navigate={navigate} />
         <button
           onClick={() => abrirModal({ nombre: '', escenarios: [], granularidad: 'general' })}
           className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded font-medium transition-colors bg-blue-800 hover:bg-blue-900"

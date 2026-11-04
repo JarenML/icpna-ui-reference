@@ -29,18 +29,6 @@ const REPORTES: Reporte[] = [
     paginas: 4,
   },
   {
-    nombre: 'Resultados por Escenario',
-    grupo: 'Reporte Global',
-    descripcion: 'Construcción del resultado, contexto estadístico y factibilidad de cada escenario simulado.',
-    paginas: 3,
-  },
-  {
-    nombre: 'Comparación de Escenarios',
-    grupo: 'Reporte Global',
-    descripcion: 'Indicadores lado a lado, ranking por criterio e ingresos estimados.',
-    paginas: 2,
-  },
-  {
     nombre: 'Reporte Granular',
     grupo: 'Reporte Granular',
     descripcion: 'Desglose por Periodo, Modalidad, Programa, Sede, Tipo de Alumno, Curso y Horario.',

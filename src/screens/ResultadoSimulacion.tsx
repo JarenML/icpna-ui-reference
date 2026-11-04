@@ -128,7 +128,7 @@ export default function ResultadoSimulacion({ navigate, escenarioId }: Props) {
             </button>
           ))}
           <ExportPowerBI
-            reporte="Resultados por Escenario"
+            reporte="Tablero Ejecutivo"
             tablas={['res_escenario_detalle', 'res_aporte_intervencion', 'res_capacidad']}
             navigate={navigate}
           />
